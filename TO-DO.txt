@@ -1,0 +1,19 @@
+﻿******** A estrutura de arquivos e código fonte ainda é um rascunho ********
+
+Para executar o codigo compilado que está no projeto atual é preciso executar com Java 8
+
+TO-DO:
+
+
+- Adicionar transferência de arquivos
+
+- Testar se emojis funcionam
+
+- Adicionar Entrada de nome e data e hora do envio
+
+- Criar um arquivo de configuração para o socket do cliente buscar as configurações de conexão nele
+
+- Digitalizar o rascunho da interface gráfica
+- Fazer interface gráfica
+
+- Integrar interface gráfica com a comunicacao em socket
