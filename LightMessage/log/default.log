@@ -1,0 +1,13 @@
+
+INFO - 16/09/2021 23:18:20.337: SocketReadInput - Start
+DEBUG - 16/09/2021 23:18:25.352: SocketReadInput - processing command command=type=2|content=6473d197-9e15-4cb3-bec8-fae2a6358d09
+DEBUG - 16/09/2021 23:18:25.353: SocketReadInput - Recived UUID uuid=6473d197-9e15-4cb3-bec8-fae2a6358d09
+INFO - 16/09/2021 23:18:29.829: SocketReadInput - Start
+DEBUG - 16/09/2021 23:18:29.837: SocketReadInput - processing command command=type=2|content=2e723047-8a87-4433-9c94-ea5486129fa9
+DEBUG - 16/09/2021 23:18:29.838: SocketReadInput - Recived UUID uuid=2e723047-8a87-4433-9c94-ea5486129fa9
+DEBUG - 16/09/2021 23:18:52.834: processesSending - Sended - command=type=0|content=Alou&|name=Dorival|datetime=2021-09-16T23:18:52.834
+DEBUG - 16/09/2021 23:18:59.905: SocketReadInput - processing command command=type=0|content=Alou&|name=Dorival|datetime=2021-09-16T23:18:52.834
+DEBUG - 16/09/2021 23:19:05.874: processesSending - Sended - command=type=0|content=Olá&|name=Roberto|datetime=2021-09-16T23:19:05.874
+DEBUG - 16/09/2021 23:19:10.433: SocketReadInput - processing command command=type=0|content=Olá&|name=Roberto|datetime=2021-09-16T23:19:05.874
+INFO - 16/09/2021 23:23:08.706: Closing Socket
+INFO - 16/09/2021 23:23:09.545: Closing Socket

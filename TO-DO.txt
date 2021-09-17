@@ -1,19 +1,20 @@
-﻿******** A estrutura de arquivos e código fonte ainda é um rascunho ********
-
-Para executar o codigo compilado que está no projeto atual é preciso executar com Java 8
+﻿Para executar o codigo compilado que está no projeto atual é preciso executar com Java 8
 
 TO-DO:
 
 
-- Adicionar transferência de arquivos
+- Passar os comandos para usar Base64
+
+- Ajustar o envio de imagens com o uso do ImageIO
 
 - Testar se emojis funcionam
 
-- Adicionar Entrada de nome e data e hora do envio
+- Ajustar o espaçamento das mensagens na GUI
 
-- Criar um arquivo de configuração para o socket do cliente buscar as configurações de conexão nele
+- Criar e adicionar logo do LightMessages
 
-- Digitalizar o rascunho da interface gráfica
-- Fazer interface gráfica
+- Adicionar o enter como comando de envio na caixa de texto e adicionar shift + enter para criar um novo paragrafo na mensagem
 
-- Integrar interface gráfica com a comunicacao em socket
+- Comprimir os arquivos executáveis para .JAR
+
+
