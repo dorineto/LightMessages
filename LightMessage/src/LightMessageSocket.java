@@ -1,11 +1,8 @@
 import java.net.*;
 import java.io.*;
-import java.util.Arrays;
+import java.util.Base64;
 import java.util.Hashtable;
-import java.util.UUID;
-import java.util.Scanner;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 public class LightMessageSocket{
 	protected LightMessageUI ligthUI;
@@ -81,6 +78,8 @@ public class LightMessageSocket{
 							inpStr.read(buffer);
 							
 							String commandStr = new String(buffer, "UTF-8");
+
+							commandStr = new String(Base64.getDecoder().decode(commandStr), "UTF-8");
 							
 							Command command = Command.parse(commandStr);
 							
@@ -180,6 +179,8 @@ public class LightMessageSocket{
 				
 				String commandStr = "type="+commandType.CLOSE.ordinal();
 
+				commandStr = Base64.getEncoder().encodeToString(commandStr.getBytes("UTF-8"));
+
 				out.write(commandStr.getBytes("UTF-8"));
 				out.flush();
 			}
@@ -225,8 +226,10 @@ public class LightMessageSocket{
 			
 			BufferedWriter bw = new BufferedWriter( new FileWriter(saveFile) );
 			
-			String originalContent = content.replaceAll("<PIPE>", "|").replaceAll("<ECOM_PIPE>", "&|");
+			//String originalContent = content.replaceAll("<PIPE>", "|").replaceAll("<ECOM_PIPE>", "&|");
 			
+			String originalContent = new String(Base64.getDecoder().decode(content), "UTF-8");
+
 			bw.write(originalContent, 0, originalContent.length());
 			bw.close();
 		
@@ -272,8 +275,10 @@ public class LightMessageSocket{
 						aux = br.read();
 					}
 					
-					fileContent = fileContent.replaceAll("\\|", "<PIPE>").replaceAll("&\\|", "<ECOM_PIPE>");
+					//fileContent = fileContent.replaceAll("\\|", "<PIPE>").replaceAll("&\\|", "<ECOM_PIPE>");
 					
+					fileContent = Base64.getEncoder().encodeToString(fileContent.getBytes("UTF-8"));
+
 					br.close();
 					
 					commandContent += fileContent + "|filename=" + contentFile.getName();
@@ -288,7 +293,7 @@ public class LightMessageSocket{
 				return "Tipo de envio desconhecido!";
 			}
 			
-			command = commandContent + command;
+			command = Base64.getEncoder().encodeToString((commandContent + command).getBytes("UTF-8"));
 			
 			OutputStream out = sock.getOutputStream();
 			out.write(command.getBytes("UTF-8"));

@@ -56,6 +56,8 @@ class LightMessageSocketServer{
 							
 							String commandStr = "type="+commandType.UUID.ordinal()+"|content="+uuid;
 							
+							commandStr = Base64.getEncoder().encodeToString(commandStr.getBytes("UTF-8"));
+
 							OutputStream out = sock.getOutputStream();
 							out.write(commandStr.getBytes("UTF-8"));
 							out.flush();
@@ -119,15 +121,17 @@ class LightMessageSocketServer{
 									
 									String commandStr = new String(buffer, "UTF-8");
 									
-									Command command = Command.parse(commandStr);
+									String decodedCommandStr = new String(Base64.getDecoder().decode(commandStr), "UTf-8");
+
+									Command command = Command.parse(decodedCommandStr);
 									
 									if(!command.getContentDict().containsKey("type"))
 									{
-										logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Invalid command uiid="+socketKey+",command="+commandStr);
+										logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Invalid command uiid="+socketKey+",command="+decodedCommandStr);
 										continue;
 									}
 									
-									logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Processing uiid="+socketKey+",command="+commandStr);
+									logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Processing uiid="+socketKey+",command="+decodedCommandStr);
 									
 									int type = Integer.parseInt(command.getContentDict().get("type"));
 									
@@ -144,7 +148,7 @@ class LightMessageSocketServer{
 										if(!command.getContentDict().containsKey("content") 
 										 ||!command.getInfoDict().containsKey("name")
 										 ||!command.getInfoDict().containsKey("datetime")){
-											logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Invalid command uiid="+socketKey+",command="+commandStr);
+											logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Invalid command uiid="+socketKey+",command="+decodedCommandStr);
 											continue;
 										 }
 										
@@ -167,7 +171,7 @@ class LightMessageSocketServer{
 												if(!otherSocketKey.equalsIgnoreCase(socketKey)
 												 && (!otherSocketAux.isClosed() && otherSocketAux.isConnected()))
 												{
-													logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Sending uuid="+ otherSocketKey+",command="+commandStr);
+													logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Sending uuid="+ otherSocketKey+",command="+decodedCommandStr);
 													 
 													outAux = otherSocketAux.getOutputStream();
 													outAux.write(commandStr.getBytes("UTF-8"));
@@ -175,7 +179,7 @@ class LightMessageSocketServer{
 												}
 											}
 											catch(IOException ex){
-												logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - Removing Socket uuid="+otherSocketKey);
+												logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - Removing Socket uuid="+decodedCommandStr);
 												sockets.remove(otherSocketKey);
 											}
 											catch(Exception ex)

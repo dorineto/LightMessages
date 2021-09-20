@@ -18,7 +18,7 @@ class Command{
 	
 	public static Command parse(String commandStr){
 		Command returnCmd = new Command();
-		
+
 		if(!commandStr.trim().isEmpty()){
 			String[] contentInfoStr = new String[2];
 			

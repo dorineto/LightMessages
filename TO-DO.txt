@@ -2,9 +2,6 @@
 
 TO-DO:
 
-
-- Passar os comandos para usar Base64
-
 - Ajustar o envio de imagens com o uso do ImageIO
 
 - Testar se emojis funcionam
