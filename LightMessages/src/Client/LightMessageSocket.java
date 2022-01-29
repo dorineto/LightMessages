@@ -6,6 +6,9 @@ import java.util.Base64;
 import java.util.Hashtable;
 import java.time.LocalDateTime;
 
+import java.awt.image.*;
+import javax.imageio.*;
+
 import Commons.*;
 
 public class LightMessageSocket{
@@ -228,14 +231,35 @@ public class LightMessageSocket{
 				saveFile = new File(path + newFilename);
 			}
 			
-			BufferedWriter bw = new BufferedWriter( new FileWriter(saveFile) );
-			
-			//String originalContent = content.replaceAll("<PIPE>", "|").replaceAll("<ECOM_PIPE>", "&|");
-			
-			String originalContent = new String(Base64.getDecoder().decode(content), "UTF-8");
+			byte[] contentBytes = Base64.getDecoder().decode(content);
 
-			bw.write(originalContent, 0, originalContent.length());
-			bw.close();
+			String mimeType = URLConnection.guessContentTypeFromName(filename).toLowerCase();
+
+			if(mimeType != null && !mimeType.isEmpty() && mimeType.startsWith("image/"))
+			{
+
+				// TO-DO: Test 
+
+				ByteArrayInputStream imgBytes = new ByteArrayInputStream(contentBytes);
+
+				BufferedImage contentImgBuff = ImageIO.read(imgBytes);
+
+				String format = mimeType.split("/")[1];
+				
+				ImageIO.write(contentImgBuff, format, saveFile);
+
+				imgBytes.close();
+			}
+			else
+			{
+				BufferedWriter bw = new BufferedWriter( new FileWriter(saveFile) );
+				
+				String originalContent = new String(contentBytes, "UTF-8");
+
+				bw.write(originalContent, 0, originalContent.length());
+				bw.close();
+			}
+			
 		
 		}catch(Exception ex){
 			logger.writeLog(LogLevel.ERROR, "saveFile - "+ex);
@@ -267,24 +291,43 @@ public class LightMessageSocket{
 					
 				if(!contentFile.canRead())
 					return "Sem permição para leitura desse arquivo!";
-				
-				try{
-					BufferedReader br = new BufferedReader( new FileReader(contentFile) );
-					
-					String fileContent = "";
-					int aux = br.read();
-					
-					while(aux != -1){
-						fileContent += (char)aux;
-						aux = br.read();
-					}
-					
-					//fileContent = fileContent.replaceAll("\\|", "<PIPE>").replaceAll("&\\|", "<ECOM_PIPE>");
-					
-					fileContent = Base64.getEncoder().encodeToString(fileContent.getBytes("UTF-8"));
 
-					br.close();
+				try{
+					String fileContent = "";
+
+					String mimeType = URLConnection.guessContentTypeFromName(contentFile.getName()).toLowerCase();
+
+					if(mimeType != null && !mimeType.isEmpty() && mimeType.startsWith("image/"))
+					{
+
+						BufferedImage sendBuffImg = ImageIO.read(contentFile);
+
+						ByteArrayOutputStream imgByteArr = new ByteArrayOutputStream();
+
+						String format = mimeType.split("/")[1];
+						ImageIO.write(sendBuffImg, format, imgByteArr);
+
+						fileContent = Base64.getEncoder().encodeToString(imgByteArr.toByteArray());
+						
+						imgByteArr.close();
+					}
+					else
+					{
+
+						BufferedReader br = new BufferedReader( new FileReader(contentFile) );
 					
+						int aux = br.read();
+						
+						while(aux != -1){
+							fileContent += (char)aux;
+							aux = br.read();
+						}
+						
+						br.close();			
+
+						fileContent = Base64.getEncoder().encodeToString(fileContent.getBytes("UTF-8"));
+					}
+
 					commandContent += fileContent + "|filename=" + contentFile.getName();
 				}
 				catch(Exception ex){
@@ -299,6 +342,8 @@ public class LightMessageSocket{
 			
 			command = Base64.getEncoder().encodeToString((commandContent + command).getBytes("UTF-8"));
 			
+			System.out.println("Send Command=" + command + " UUID=" + uniqueID);
+
 			OutputStream out = sock.getOutputStream();
 			out.write(command.getBytes("UTF-8"));
 			out.flush();

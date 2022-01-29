@@ -1,6 +1,7 @@
 package Server;
 
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.io.*;
 import Commons.*;
@@ -27,8 +28,10 @@ class LightMessageSocketServer{
 			
 			logger = new Logger(config.get("logpath"));
 			
+			/*
 			config.put("serverport", "4860");
 			config.put("maxconnectionquantity", "1024");
+			*/
 			
 			if(!config.containsKey("serverport"))
 				throw new Exception("setup - serverport not configure");
@@ -118,11 +121,37 @@ class LightMessageSocketServer{
 								InputStream inpStream = auxSock.getInputStream();
 								if(inpStream.available() > 0)
 								{
-									byte[] buffer = new byte[inpStream.available()];
-									
-									inpStream.read(buffer);
-									
-									String commandStr = new String(buffer, "UTF-8");
+									System.out.println("New Command recived - Initial command size = " + inpStream.available());
+
+									ArrayList<byte[]> contentChunksList = new ArrayList<byte[]>();
+
+									int totalBytes = 0;
+
+									byte[] buffer = new byte[5000];
+									int readLenght = inpStream.read(buffer, 0, 5000);
+
+									contentChunksList.add(Arrays.copyOf(buffer, readLenght));
+									totalBytes += readLenght;
+
+									while( readLenght > -1 )
+									{
+										readLenght = inpStream.read(buffer, 0, 5000);
+
+										if(readLenght > -1){
+											System.out.println("Bytes read - Chunck size = "+readLenght+" Total size = " + totalBytes);
+											contentChunksList.add(Arrays.copyOf(buffer, readLenght));
+											totalBytes += readLenght;
+										}
+									}
+
+									System.out.println("Total Bytes read - Total size = " + totalBytes);
+
+									ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
+
+									for (byte[] contentChunck :  contentChunksList)
+										finalBuffer.put(contentChunck);
+
+									String commandStr = new String(finalBuffer.array(), "UTF-8");
 									
 									String decodedCommandStr = new String(Base64.getDecoder().decode(commandStr), "UTf-8");
 

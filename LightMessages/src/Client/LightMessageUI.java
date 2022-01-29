@@ -363,7 +363,7 @@ class LightMessageUI extends JFrame{
 					return;
 				
 				File file = jfc.getSelectedFile();
-				
+
 				try
 				{
 					pathFileSelected = file.getAbsolutePath();
