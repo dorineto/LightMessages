@@ -35,4 +35,24 @@ public class Logger{
 		}
 		catch(Exception ex){}
 	}
+
+	public static String dumpException(Exception ex){
+        
+        StringWriter stringWriter = new StringWriter();
+
+        PrintWriter pw = new PrintWriter(stringWriter);
+
+        ex.printStackTrace(pw);
+
+        pw.close();
+
+        String fullExceptionStr = stringWriter.toString();
+
+        try {
+            stringWriter.close();
+        }
+        catch(Exception ex1){}
+
+        return fullExceptionStr;
+	}
 }

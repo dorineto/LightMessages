@@ -60,7 +60,7 @@ class LightMessageUI extends JFrame{
 		}
 		catch(Exception ex)
 		{
-			this.closeUI(ex.getMessage());
+			this.closeUI(Logger.dumpException(ex));
 		}
 		
 		this.setupUI(width, height);

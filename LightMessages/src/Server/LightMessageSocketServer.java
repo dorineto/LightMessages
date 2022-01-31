@@ -121,30 +121,25 @@ class LightMessageSocketServer{
 								InputStream inpStream = auxSock.getInputStream();
 								if(inpStream.available() > 0)
 								{
-									System.out.println("New Command recived - Initial command size = " + inpStream.available());
-
 									ArrayList<byte[]> contentChunksList = new ArrayList<byte[]>();
 
 									int totalBytes = 0;
 
 									byte[] buffer = new byte[5000];
-									int readLenght = inpStream.read(buffer, 0, 5000);
+									int readLenght = inpStream.read(buffer, 0, buffer.length);
 
 									contentChunksList.add(Arrays.copyOf(buffer, readLenght));
 									totalBytes += readLenght;
 
-									while( readLenght > -1 )
+									while( inpStream.available() > 0 )
 									{
 										readLenght = inpStream.read(buffer, 0, 5000);
 
 										if(readLenght > -1){
-											System.out.println("Bytes read - Chunck size = "+readLenght+" Total size = " + totalBytes);
 											contentChunksList.add(Arrays.copyOf(buffer, readLenght));
 											totalBytes += readLenght;
 										}
 									}
-
-									System.out.println("Total Bytes read - Total size = " + totalBytes);
 
 									ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
 
@@ -206,7 +201,7 @@ class LightMessageSocketServer{
 													logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Sending uuid="+ otherSocketKey+",command="+decodedCommandStr);
 													 
 													outAux = otherSocketAux.getOutputStream();
-													outAux.write(commandStr.getBytes("UTF-8"));
+													outAux.write(finalBuffer.array());
 													outAux.flush();
 												}
 											}
@@ -216,7 +211,7 @@ class LightMessageSocketServer{
 											}
 											catch(Exception ex)
 											{
-												logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - "+ex);
+												logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - " + Logger.dumpException(ex));
 												ex.printStackTrace();
 											}
 										}
@@ -225,7 +220,7 @@ class LightMessageSocketServer{
 							}
 							catch(Exception ex)
 							{
-								logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - "+ex);
+								logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - " + Logger.dumpException(ex));
 								ex.printStackTrace();
 							}
 							
@@ -241,7 +236,7 @@ class LightMessageSocketServer{
 				}
 				catch(Exception ex)
 				{
-					logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - "+ex);
+					logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - " + Logger.dumpException(ex));
 					ex.printStackTrace();
 				}
 			}, "ThreadServerSocketProcessInput").start();
@@ -251,7 +246,7 @@ class LightMessageSocketServer{
 			if(logger == null)
 				System.out.println("setup - " + ex);
 			else
-				logger.writeLog(LogLevel.ERROR, "setup - " + ex);
+				logger.writeLog(LogLevel.ERROR, "setup - " + Logger.dumpException(ex));
 				
 			try
 			{
@@ -261,9 +256,9 @@ class LightMessageSocketServer{
 			catch(Exception ex2)
 			{
 				if(logger == null)
-					System.out.println("setup - " + ex2);
+					System.out.println("setup - " + Logger.dumpException(ex2));
 				else
-					logger.writeLog(LogLevel.ERROR, "setup - " + ex2);
+					logger.writeLog(LogLevel.ERROR, "setup - " + Logger.dumpException(ex2));
 			}
 		}
 		
@@ -307,9 +302,9 @@ class LightMessageSocketServer{
 						catch(Exception ex)
 						{
 							if(logger == null)
-								System.out.println("LightMessageSocketServerShutdownHook - "+ex);
+								System.out.println("LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 							else
-								logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - "+ex);
+								logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 						}
 						
 					}
@@ -318,9 +313,9 @@ class LightMessageSocketServer{
 			catch(Exception ex)
 			{
 				if(logger == null)
-					System.out.println("LightMessageSocketServerShutdownHook - "+ex);
+					System.out.println("LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 				else
-					logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - "+ex);
+					logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 			}
 			finally
 			{
@@ -333,7 +328,7 @@ class LightMessageSocketServer{
 					if(logger == null)
 						System.out.println("LightMessageSocketServerShutdownHook - "+ex);
 					else
-						logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - "+ex);
+						logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 				}
 				
 				if(logger != null)
