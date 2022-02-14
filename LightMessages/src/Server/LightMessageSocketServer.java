@@ -52,9 +52,11 @@ class LightMessageSocketServer {
 							Socket sock = servSock.accept();
 
 							String uuid = UUID.randomUUID().toString();
-
-							sockets.put(uuid, sock);
-
+							
+							synchronized(sockets){
+								sockets.put(uuid, sock);
+							}
+							
 							logger.writeLog(LogLevel.DEBUG,
 									"ThreadServerSocketAcept - New Socket Accepted uuid=" + uuid);
 
@@ -422,10 +424,13 @@ class LightMessageSocketServer {
 								String otherSocketKey = null;
 								Socket otherSocketAux = null;
 
+
+								
 								Enumeration<String> otherSocketsKeys = sockets.keys();
 
 								while (otherSocketsKeys.hasMoreElements()) 
 								{
+
 									otherSocketKey = otherSocketsKeys.nextElement();
 									otherSocketAux = sockets.get(otherSocketKey);
 
@@ -437,15 +442,16 @@ class LightMessageSocketServer {
 										if (!otherSocketKey.equalsIgnoreCase(socketUUID) && (!otherSocketAux.isClosed() && otherSocketAux.isConnected())) 
 										{
 
-											/*
-											 * TODO: Lock the socket when sending, because if another 
-											 * thread trys to send something it will scramble the sending data 
-											 */
 											logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID= "+ socketUUID + " - Sending UUID=" + otherSocketKey + ",command=" + decodedCommandStr);
-
+											
 											outAux = otherSocketAux.getOutputStream();
-											outAux.write(finalBuffer.array());
-											outAux.flush();
+
+											synchronized (outAux)
+											{
+												outAux.write(finalBuffer.array());
+												outAux.flush();
+											}
+											
 										}
 									} 
 									catch (IOException ex) 
