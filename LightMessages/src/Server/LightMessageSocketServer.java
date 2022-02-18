@@ -1,7 +1,6 @@
 package Server;
 
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.io.*;
 import Commons.*;
@@ -10,10 +9,10 @@ class LightMessageSocketServer {
 	protected ServerSocket servSock = null;
 	protected Hashtable<String, Socket> sockets = new Hashtable<String, Socket>();
 
-	protected boolean running = true;
-
 	protected Hashtable<String, String> config;
 	protected Logger logger;
+
+	protected ServerSocketAccept serverSocketAccept;
 
 	public static void main(String[] args) {
 		new LightMessageSocketServer().setup();
@@ -26,12 +25,7 @@ class LightMessageSocketServer {
 			if (!config.containsKey("logpath"))
 				throw new Exception("setup - logpath not configure");
 
-			logger = new Logger(config.get("logpath"));
-
-			/*
-			 * config.put("serverport", "4860");
-			 * config.put("maxconnectionquantity", "1024");
-			 */
+			logger = Logger.getLogger(config.get("logpath"));
 
 			if (!config.containsKey("serverport"))
 				throw new Exception("setup - serverport not configure");
@@ -44,194 +38,8 @@ class LightMessageSocketServer {
 			servSock = new ServerSocket(port, connectionQuantity);
 			servSock.setSoTimeout(15000);
 
-			new Thread(() -> {
-				try {
-					logger.writeLog(LogLevel.INFO, "ThreadServerSocketAcept - Start thread");
-					while (running) {
-						try {
-							Socket sock = servSock.accept();
-
-							String uuid = UUID.randomUUID().toString();
-							
-							synchronized(sockets){
-								sockets.put(uuid, sock);
-							}
-							
-							logger.writeLog(LogLevel.DEBUG,
-									"ThreadServerSocketAcept - New Socket Accepted uuid=" + uuid);
-
-							String commandStr = "type=" + commandType.UUID.ordinal() + "|content=" + uuid;
-
-							commandStr = Base64.getEncoder().encodeToString(commandStr.getBytes("UTF-8"));
-
-							OutputStream out = sock.getOutputStream();
-							out.write(commandStr.getBytes("UTF-8"));
-							out.flush();
-						} catch (SocketTimeoutException ex) {
-						}
-
-						try {
-							Thread.sleep(3500);
-						} catch (Exception ex) {
-						}
-					}
-					logger.writeLog(LogLevel.INFO, "ThreadServerSocketAcept - End thread");
-				} catch (Exception ex) {
-					logger.writeLog(LogLevel.ERROR, "ThreadServerSocketAccept - " + ex);
-
-					running = false;
-
-					try {
-						if (servSock != null && !servSock.isClosed())
-							servSock.close();
-					} catch (Exception ex2) {
-					}
-				}
-			}, "ThreadServerSocketAccept").start();
-
-			new Thread(() -> {
-				try {
-					logger.writeLog(LogLevel.INFO, "ThreadServerSocketProcessInput - Start thread");
-					while (running) {
-
-						Socket auxSock = null;
-
-						Enumeration<String> socketsKeys = sockets.keys();
-						while (socketsKeys.hasMoreElements()) {
-							String socketKey = socketsKeys.nextElement();
-
-							auxSock = sockets.get(socketKey);
-							if (auxSock == null)
-								continue;
-
-							try {
-
-								if (auxSock.isClosed() || !auxSock.isConnected()) {
-									sockets.remove(socketKey);
-									logger.writeLog(LogLevel.DEBUG,
-											"ThreadServerSocketProcessInput - Socket removed uiid=" + socketKey);
-									continue;
-								}
-
-								InputStream inpStream = auxSock.getInputStream();
-								if (inpStream.available() > 0) {
-									ArrayList<byte[]> contentChunksList = new ArrayList<byte[]>();
-
-									int totalBytes = 0;
-
-									byte[] buffer = new byte[5000];
-									int readLenght = inpStream.read(buffer, 0, buffer.length);
-
-									contentChunksList.add(Arrays.copyOf(buffer, readLenght));
-									totalBytes += readLenght;
-
-									while (inpStream.available() > 0) {
-										readLenght = inpStream.read(buffer, 0, 5000);
-
-										if (readLenght > -1) {
-											contentChunksList.add(Arrays.copyOf(buffer, readLenght));
-											totalBytes += readLenght;
-										}
-									}
-
-									ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
-
-									for (byte[] contentChunck : contentChunksList)
-										finalBuffer.put(contentChunck);
-
-									String commandStr = new String(finalBuffer.array(), "UTF-8");
-
-									String decodedCommandStr = new String(Base64.getDecoder().decode(commandStr),
-											"UTf-8");
-
-									Command command = Command.parse(decodedCommandStr);
-
-									if (!command.getContentDict().containsKey("type")) {
-										logger.writeLog(LogLevel.DEBUG,
-												"ThreadServerSocketProcessInput - Invalid command uiid=" + socketKey
-														+ ",command=" + decodedCommandStr);
-										continue;
-									}
-
-									logger.writeLog(LogLevel.DEBUG, "ThreadServerSocketProcessInput - Processing uiid="
-											+ socketKey + ",command=" + decodedCommandStr);
-
-									int type = Integer.parseInt(command.getContentDict().get("type"));
-
-									if (type == commandType.CLOSE.ordinal()) {
-										logger.writeLog(LogLevel.DEBUG,
-												"ThreadServerSocketProcessInput - Closing uuid=" + socketKey);
-										auxSock.close();
-										sockets.remove(socketKey);
-									} else {
-										// Verifica se os componentes necessários em comum de
-										// um comando de arquivo ou texto estão presentes
-										if (!command.getContentDict().containsKey("content")
-												|| !command.getInfoDict().containsKey("name")
-												|| !command.getInfoDict().containsKey("datetime")) {
-											logger.writeLog(LogLevel.DEBUG,
-													"ThreadServerSocketProcessInput - Invalid command uiid=" + socketKey
-															+ ",command=" + decodedCommandStr);
-											continue;
-										}
-
-										OutputStream outAux = null;
-
-										String otherSocketKey = null;
-										Socket otherSocketAux = null;
-
-										Enumeration<String> otherSocketsKeys = sockets.keys();
-										while (otherSocketsKeys.hasMoreElements()) {
-											otherSocketKey = otherSocketsKeys.nextElement();
-											otherSocketAux = sockets.get(otherSocketKey);
-
-											if (otherSocketAux == null)
-												continue;
-
-											try {
-												if (!otherSocketKey.equalsIgnoreCase(socketKey)
-														&& (!otherSocketAux.isClosed()
-																&& otherSocketAux.isConnected())) {
-													logger.writeLog(LogLevel.DEBUG,
-															"ThreadServerSocketProcessInput - Sending uuid="
-																	+ otherSocketKey + ",command=" + decodedCommandStr);
-
-													outAux = otherSocketAux.getOutputStream();
-													outAux.write(finalBuffer.array());
-													outAux.flush();
-												}
-											} catch (IOException ex) {
-												logger.writeLog(LogLevel.ERROR,
-														"ThreadServerSocketProcessInput - Removing Socket uuid="
-																+ decodedCommandStr);
-												sockets.remove(otherSocketKey);
-											} catch (Exception ex) {
-												logger.writeLog(LogLevel.ERROR,
-														"ThreadServerSocketProcessInput - " + Logger.dumpException(ex));
-												ex.printStackTrace();
-											}
-										}
-									}
-								}
-							} catch (Exception ex) {
-								logger.writeLog(LogLevel.ERROR,
-										"ThreadServerSocketProcessInput - " + Logger.dumpException(ex));
-								ex.printStackTrace();
-							}
-
-						}
-
-						try {
-							Thread.sleep(2500);
-						} catch (Exception ex) {
-						}
-					}
-					logger.writeLog(LogLevel.INFO, "ThreadServerSocketProcessInput - End thread");
-				} catch (Exception ex) {
-					logger.writeLog(LogLevel.ERROR, "ThreadServerSocketProcessInput - " + Logger.dumpException(ex));
-					ex.printStackTrace();
-				}
-			}, "ThreadServerSocketProcessInput").start();
+			this.serverSocketAccept = new ServerSocketAccept(servSock, sockets, logger);
+			this.serverSocketAccept.start();
 
 		} catch (Exception ex) {
 			if (logger == null)
@@ -250,13 +58,25 @@ class LightMessageSocketServer {
 			}
 		}
 
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+		Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHook()));
+	}
+
+	protected class ShutdownHook implements Runnable{
+		@Override
+		public void run(){
 			try {
 				if (logger == null)
 					System.out.println("\n\nEnding Server...\n");
 				else
 					logger.writeLog(LogLevel.INFO, "Ending Server...");
-
+				
+				serverSocketAccept.stopRunning();
+				while(serverSocketAccept.isRunning()){
+					try{
+						Thread.sleep(2000);
+					} catch (Exception ex) {}
+				}
+					
 				if (sockets.size() > 0) {
 					OutputStream out = null;
 
@@ -316,180 +136,6 @@ class LightMessageSocketServer {
 				if (logger != null)
 					logger.close();
 
-			}
-		}));
-	}
-
-	private class ProcessRequest implements Runnable {
-		private Socket processingSocket;
-		private String socketUUID;
-		private boolean running;
-
-
-		public ProcessRequest(Socket processingSocket, String socketUUID) {
-			this.processingSocket = processingSocket;
-			this.socketUUID = socketUUID;
-		}
-
-		@Override
-		public void run() {
-			try 
-			{
-				
-				logger.writeLog(LogLevel.INFO, "ProcessRequest - UUID=" + socketUUID + " - Start thread");
-				this.running = true;
-
-				while (this.running) 
-				{
-					try 
-					{
-
-						if (processingSocket.isClosed() || !processingSocket.isConnected()) 
-						{
-							// TODO: Lock the sockets object when doing some altering
-							sockets.remove(socketUUID);
-							logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - socket disconnected");
-							this.running = false;
-							continue;
-						}
-
-						InputStream inpStream = processingSocket.getInputStream();
-						if (inpStream.available() > 0) 
-						{
-							ArrayList<byte[]> contentChunksList = new ArrayList<byte[]>();
-
-							int totalBytes = 0;
-
-							byte[] buffer = new byte[5000];
-							int readLenght = inpStream.read(buffer, 0, buffer.length);
-
-							contentChunksList.add(Arrays.copyOf(buffer, readLenght));
-							totalBytes += readLenght;
-
-							while (inpStream.available() > 0) 
-							{
-								readLenght = inpStream.read(buffer, 0, 5000);
-
-								if (readLenght > -1) 
-								{
-									contentChunksList.add(Arrays.copyOf(buffer, readLenght));
-									totalBytes += readLenght;
-								}
-							}
-
-							ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
-
-							for (byte[] contentChunck : contentChunksList)
-								finalBuffer.put(contentChunck);
-
-							String commandStr = new String(finalBuffer.array(), "UTF-8");
-
-							String decodedCommandStr = new String(Base64.getDecoder().decode(commandStr), "UTf-8");
-
-							Command command = Command.parse(decodedCommandStr);
-
-							if (!command.getContentDict().containsKey("type")) 
-							{
-								logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command "
-															   +"command=" + decodedCommandStr);
-								continue;
-							}
-
-							logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " -  Processing Command - "
-													       +"command=" + decodedCommandStr);
-
-							int type = Integer.parseInt(command.getContentDict().get("type"));
-
-							if (type == commandType.CLOSE.ordinal()) 
-							{
-								logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Closing Socket");
-								processingSocket.close();
-								sockets.remove(socketUUID);
-							} 
-							else 
-							{
-								// Verifica se os componentes necessários em comum de
-								// um comando de arquivo ou texto estão presentes
-								if (!command.getContentDict().containsKey("content")
-								 || !command.getInfoDict().containsKey("name")
-								 || !command.getInfoDict().containsKey("datetime")) 
-								{
-									logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command "
-																   +"command=" + decodedCommandStr);
-									continue;
-								}
-
-								OutputStream outAux = null;
-
-								String otherSocketKey = null;
-								Socket otherSocketAux = null;
-
-
-								
-								Enumeration<String> otherSocketsKeys = sockets.keys();
-
-								while (otherSocketsKeys.hasMoreElements()) 
-								{
-
-									otherSocketKey = otherSocketsKeys.nextElement();
-									otherSocketAux = sockets.get(otherSocketKey);
-
-									if (otherSocketAux == null)
-										continue;
-
-									try 
-									{
-										if (!otherSocketKey.equalsIgnoreCase(socketUUID) && (!otherSocketAux.isClosed() && otherSocketAux.isConnected())) 
-										{
-
-											logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID= "+ socketUUID + " - Sending UUID=" + otherSocketKey + ",command=" + decodedCommandStr);
-											
-											outAux = otherSocketAux.getOutputStream();
-
-											synchronized (outAux)
-											{
-												outAux.write(finalBuffer.array());
-												outAux.flush();
-											}
-											
-										}
-									} 
-									catch (IOException ex) 
-									{
-										/*
-										logger.writeLog(LogLevel.ERROR,"ProcessRequest - UUID= "+ socketUUID + " - Removing Socket uuid=" + decodedCommandStr);
-										sockets.remove(otherSocketKey);
-										*/
-										logger.writeLog(LogLevel.ERROR,"ProcessRequest - UUID= "+ socketUUID + " - Skiping Socket uuid=" + decodedCommandStr);
-									} 
-									catch (Exception ex)
-									{
-										logger.writeLog(LogLevel.ERROR, "ProcessRequest - UUID=" + socketUUID + " - " + Logger.dumpException(ex));
-									}
-										
-								}
-							}
-						}
-					} 
-					catch (Exception ex) 
-					{
-						logger.writeLog(LogLevel.ERROR, "ProcessRequest - UUID=" + socketUUID + " - " + Logger.dumpException(ex));
-					}
-
-					try 
-					{
-						Thread.sleep(3500);
-					} 
-					catch (Exception ex) {}
-
-				}
-
-				logger.writeLog(LogLevel.INFO, "ProcessRequest - UUID=" + socketUUID + " - End thread");
-
-			} 
-			catch (Exception ex) 
-			{
-				logger.writeLog(LogLevel.ERROR, "ProcessRequest - UUID=" + socketUUID + " - " + Logger.dumpException(ex));
 			}
 		}
 	}

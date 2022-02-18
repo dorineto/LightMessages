@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class Logger{
+	private static Logger singlogger;
+
 	private BufferedWriter writer;
 	
-	public Logger(String pathToLog) throws IOException, SecurityException {
+	private Logger(String pathToLog) throws IOException, SecurityException {
 		File logFile = new File(pathToLog);
 		
 		logFile.getParentFile().mkdir();
@@ -15,6 +17,17 @@ public class Logger{
 		
 		this.writer = new BufferedWriter( new FileWriter(pathToLog, true) );
 		
+	}
+
+	public static Logger getLogger(String pathToLog) throws IOException, SecurityException {
+		if(Logger.singlogger == null)
+			Logger.singlogger = new Logger(pathToLog);
+
+		return Logger.singlogger;
+	}
+
+	public static Logger getLogger() throws IOException, SecurityException {
+		return Logger.getLogger("../log/default.log");
 	}
 	
 	public void writeLog(LogLevel loglevel, String log) {

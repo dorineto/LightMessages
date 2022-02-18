@@ -57,7 +57,7 @@ public class LightMessageSocket{
 			if(!config.containsKey("logpath"))
 				throw new Exception("Socket Setup - logpath não está configurado");
 			
-			logger = new Logger(config.get("logpath"));
+			logger = Logger.getLogger(config.get("logpath"));
 			
 			if(!config.containsKey("serveraddress"))
 				throw new Exception("Socket Setup - serveraddress não está configurado");
@@ -184,7 +184,7 @@ public class LightMessageSocket{
 					}
 						
 					try{
-						Thread.sleep(5000);
+						Thread.sleep(2000);
 					}
 					catch(Exception ex){}
 				}
@@ -385,22 +385,6 @@ public class LightMessageSocket{
 
 						fileContent += Base64.getEncoder().encodeToString(finalBuffer.array());
 
-
-						
-						/*
-						BufferedReader br = new BufferedReader( new FileReader(contentFile) );
-					
-						int aux = br.read();
-						
-						while(aux != -1){
-							fileContent += (char)aux;
-							aux = br.read();
-						}
-						
-						br.close();			
-
-						fileContent = Base64.getEncoder().encodeToString(fileContent.getBytes("UTF-8"));
-						*/
 					}
 
 					commandContent += fileContent + "|filename=" + contentFile.getName();
