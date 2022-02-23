@@ -1,38 +1,33 @@
 package Server;
 
-import Commons.*;
 import java.net.*;
-import java.util.*;
 import java.io.*;
 import java.nio.*;
+import java.util.*;
 
-public class ProcessRequest extends Thread {
-    private Socket processingSocket;
+import Commons.*;
+
+public class ProcessRequest extends ThreadSafeStop {
     private String socketUUID;
+    private Socket socket;
+
+    private Hashtable<String, SocketClient> sockets;
     private Logger logger;
-    private Hashtable<String,Socket> sockets;
-    private boolean stopRunning;
-    private boolean running;
 
-
-    public ProcessRequest(Socket processingSocket, String socketUUID, Logger logger, Hashtable<String,Socket> sockets) {
+    public ProcessRequest(String socketUUID, Socket socket, Hashtable<String, SocketClient> sockets){
         super("ProcessRequest - " + socketUUID);
 
-        this.processingSocket = processingSocket;
         this.socketUUID = socketUUID;
+        this.socket = socket;
 
-        this.logger = logger;
         this.sockets = sockets;
 
-        this.running = false;
-        this.stopRunning = false;
+        try{
+            this.logger = Logger.getLogger();
+        }catch(Exception ex){
+            throw new RuntimeException("ProcessRequest - " + socketUUID + " - Ex: " + Logger.dumpException(ex));
+        }
     }
-
-    public boolean isRunning(){ return this.running; }
-
-    public void stopRunning(){ this.stopRunning = true; }
-
-    public void unstopRunning(){ this.stopRunning = false; }
 
     @Override
     public void run() {
@@ -47,7 +42,7 @@ public class ProcessRequest extends Thread {
                 try 
                 {
 
-                    if (processingSocket.isClosed() || !processingSocket.isConnected()) 
+                    if (socket.isClosed() || !socket.isConnected()) 
                     {
                         synchronized(sockets){
                             sockets.remove(socketUUID);
@@ -58,7 +53,7 @@ public class ProcessRequest extends Thread {
                         continue;
                     }
 
-                    InputStream inpStream = processingSocket.getInputStream();
+                    InputStream inpStream = socket.getInputStream();
                     if (inpStream.available() > 0) 
                     {
                         ArrayList<byte[]> contentChunksList = new ArrayList<byte[]>();
@@ -96,19 +91,19 @@ public class ProcessRequest extends Thread {
                         if (!command.getContentDict().containsKey("type")) 
                         {
                             logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command "
-                                                           +"command=" + decodedCommandStr);
+                                                        +"command=" + decodedCommandStr);
                             continue;
                         }
 
                         logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " -  Processing Command - "
-                                                       +"command=" + decodedCommandStr);
+                                                    +"command=" + decodedCommandStr);
 
                         int type = Integer.parseInt(command.getContentDict().get("type"));
 
                         if (type == commandType.CLOSE.ordinal()) 
                         {
                             logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Closing Socket");
-                            processingSocket.close();
+                            socket.close();
 
                             synchronized(sockets){
                                 sockets.remove(socketUUID);
@@ -119,11 +114,11 @@ public class ProcessRequest extends Thread {
                             // Verifica se os componentes necessários em comum de
                             // um comando de arquivo ou texto estão presentes
                             if (!command.getContentDict().containsKey("content")
-                             || !command.getInfoDict().containsKey("name")
-                             || !command.getInfoDict().containsKey("datetime")) 
+                            || !command.getInfoDict().containsKey("name")
+                            || !command.getInfoDict().containsKey("datetime")) 
                             {
                                 logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command "
-                                                               +"command=" + decodedCommandStr);
+                                                            +"command=" + decodedCommandStr);
                                 continue;
                             }
 
@@ -138,10 +133,11 @@ public class ProcessRequest extends Thread {
                             {
 
                                 otherSocketKey = otherSocketsKeys.nextElement();
-                                otherSocketAux = sockets.get(otherSocketKey);
-
-                                if (otherSocketAux == null)
+                            
+                                if (sockets.get(otherSocketKey) == null)
                                     continue;
+                                
+                                otherSocketAux = sockets.get(otherSocketKey).getSocket();
 
                                 try 
                                 {

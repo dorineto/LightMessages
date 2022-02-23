@@ -7,7 +7,7 @@ import Commons.*;
 
 class LightMessageSocketServer {
 	protected ServerSocket servSock = null;
-	protected Hashtable<String, Socket> sockets = new Hashtable<String, Socket>();
+	protected Hashtable<String, SocketClient> sockets = new Hashtable<String, SocketClient>();
 
 	protected Hashtable<String, String> config;
 	protected Logger logger;
@@ -38,7 +38,9 @@ class LightMessageSocketServer {
 			servSock = new ServerSocket(port, connectionQuantity);
 			servSock.setSoTimeout(15000);
 
-			this.serverSocketAccept = new ServerSocketAccept(servSock, sockets, logger);
+
+			// TODO: See the causo of "Unresolved compilation problem" Exception
+			this.serverSocketAccept = new ServerSocketAccept(servSock, sockets);
 			this.serverSocketAccept.start();
 
 		} catch (Exception ex) {
@@ -80,14 +82,16 @@ class LightMessageSocketServer {
 				if (sockets.size() > 0) {
 					OutputStream out = null;
 
-					Iterator<Map.Entry<String, Socket>> socketsEntrys = sockets.entrySet().iterator();
-					Map.Entry<String, Socket> socketEntry = null;
+					Iterator<Map.Entry<String, SocketClient>> socketsEntrys = sockets.entrySet().iterator();
+					Map.Entry<String, SocketClient> socketEntry = null;
+					Socket auxSocket = null;
 
 					while (socketsEntrys.hasNext()) {
 						socketEntry = socketsEntrys.next();
+						auxSocket = socketEntry.getValue().getSocket();
 
 						try {
-							if (!socketEntry.getValue().isClosed() && socketEntry.getValue().isConnected()) {
+							if (!auxSocket.isClosed() && auxSocket.isConnected()) {
 								if (logger == null)
 									System.out.println("LightMessageSocketServerShutdownHook - Closing uuid="
 											+ socketEntry.getKey());
@@ -98,11 +102,11 @@ class LightMessageSocketServer {
 
 								String commandStr = "type=" + commandType.CLOSE.ordinal();
 
-								out = socketEntry.getValue().getOutputStream();
+								out = auxSocket.getOutputStream();
 								out.write(commandStr.getBytes("UTF-8"));
 								out.flush();
 
-								socketEntry.getValue().close();
+								auxSocket.close();
 							}
 						} catch (IOException ex) {
 						} catch (Exception ex) {
