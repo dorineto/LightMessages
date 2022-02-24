@@ -2,9 +2,7 @@ package Client;
 
 import java.net.*;
 import java.io.*;
-import java.lang.reflect.Array;
 import java.util.Base64;
-import java.util.Base64.*;
 import java.util.Hashtable;
 import java.time.LocalDateTime;
 
@@ -20,22 +18,37 @@ public class LightMessageSocket{
 	protected LightMessageUI ligthUI;
 	
 	protected Socket sock = null;
-	protected boolean running = true;
-	protected InetSocketAddress address = null;
-	protected String uniqueID = "";
 	
-	protected Hashtable<String, String> config;
 	protected Logger logger;
+
+	private ReadInput readInput;
 	
+	protected static InetSocketAddress connectionAddress = null;
+	protected static Hashtable<String, String> config;
+	protected static String downloadPath;
+
 	public LightMessageSocket(LightMessageUI ligthUI){
 		this.ligthUI = ligthUI;
 	}
 	
-	public static boolean tryConnection(Socket sock, InetSocketAddress address, Logger logger){
+	public static InetSocketAddress getConnectionAddress() { return connectionAddress; }
+	public static Hashtable<String, String> getConfig () { return config; }
+	public static String getDownloadPath() { return downloadPath; }
+
+	public static boolean tryConnection(Socket sock){
+		Logger logger = null;
+
+		try{
+			logger = Logger.getLogger();
+		}
+		catch(Exception ex){
+			throw new RuntimeException("tryConnection - Ex: " + Logger.dumpException(ex));
+		}
+
 		int trys = 0;
 		while(trys < 3 && !sock.isConnected()){
 			try{
-				sock.connect(address, 15000);
+				sock.connect(connectionAddress, 15000);
 			}
 			catch(SocketTimeoutException ex){
 				logger.writeLog(LogLevel.ERROR, "tryConnection - Socket timout connection - try="+(trys + 1));
@@ -68,128 +81,16 @@ public class LightMessageSocket{
 			
 			int port = Integer.parseInt(config.get("serveraddressport"));
 			
-			address = new InetSocketAddress(InetAddress.getByName(config.get("serveraddress")), port);
+			connectionAddress = new InetSocketAddress(InetAddress.getByName(config.get("serveraddress")), port);
 			
-			if(!LightMessageSocket.tryConnection(sock, address, logger))
+			downloadPath = config.containsKey("downloadfilepath")? config.get("downloadfilepath") : "./downloads/";
+
+			if(!LightMessageSocket.tryConnection(sock))
 				throw new Exception("\nSocket Setup - Não foi possivel estabelecer uma conexão, tente novamente mais tarde!\n");
 			
-			new Thread( () -> {
-				logger.writeLog(LogLevel.INFO, "SocketReadInput - Start");
-				while(running){
-					try{
-						if(running && !LightMessageSocket.tryConnection(sock, address, logger)){
-							running = false;
-							ligthUI.closeUI("Não foi possivel estabelecer uma conexão, tente novamente mais tarde!");
-							continue;
-						}
-						
-						InputStream inpStr = sock.getInputStream();
-						if(inpStr.available() > 0){
-							ArrayList<byte[]> contentChuncks = new ArrayList<byte[]>();
-							int totalBytes = 0;
+			readInput = new ReadInput(sock, ligthUI);
+			readInput.start();
 
-							byte[] buffer = new byte[5000];
-
-							int readLenght = inpStr.read(buffer, 0, buffer.length);
-							
-							contentChuncks.add(Arrays.copyOf(buffer, readLenght));
-							totalBytes += readLenght;
-
-							while(inpStr.available() > 0){
-								readLenght = inpStr.read(buffer, 0, 5000);
-
-								if(readLenght > -1){									
-									contentChuncks.add(Arrays.copyOf(buffer, readLenght));
-									totalBytes += readLenght;
-								}
-							}
-
-							ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
-
-							for(byte[] contentChunck : contentChuncks)
-								finalBuffer.put(contentChunck);
-
-							String commandStr = new String(finalBuffer.array(), "UTF-8");
-
-							commandStr = new String(Base64.getDecoder().decode(commandStr), "UTF-8");
-							
-							Command command = Command.parse(commandStr);
-							
-							if(!command.getContentDict().containsKey("type"))
-							{
-								logger.writeLog(LogLevel.ERROR, "SocketReadInput - Invalid command command="+commandStr);
-								continue;
-							}
-							
-							logger.writeLog(LogLevel.DEBUG, "SocketReadInput - processing command command="+commandStr);
-							
-							int type = Integer.parseInt( command.getContentDict().get("type") );
-							
-							switch(type){
-								case 2: { // UUID
-									if(!command.getContentDict().containsKey("content"))
-									{
-										logger.writeLog(LogLevel.ERROR, "SocketReadInput - Invalid command command="+commandStr);
-										continue;
-									}
-									
-									uniqueID = command.getContentDict().get("content");
-									logger.writeLog(LogLevel.DEBUG, "SocketReadInput - Recived UUID uuid="+uniqueID);
-								}
-								break;
-								case 3: { // CLOSE
-									logger.writeLog(LogLevel.ERROR, "SocketReadInput - Server Socket closed command="+commandStr);
-									running = false;
-									ligthUI.closeUI("SocketServer foi fechada!");									
-								}
-								break;
-								case 0: { // TEXT
-									String name = command.getInfoDict().get("name");
-									LocalDateTime datetime = LocalDateTime.parse(command.getInfoDict().get("datetime"));
-									
-									ligthUI.createNewMessage(name, datetime, command.getContentDict().get("content"), MessageDirection.RECEIVING, commandType.TEXT);
-								}
-								break;
-								case 1: { // FILE
-									if(!command.getContentDict().containsKey("filename"))
-									{
-										logger.writeLog(LogLevel.ERROR, "SocketReadInput - Invalid command command="+commandStr);
-										continue;
-									}
-									
-									String filename = command.getContentDict().get("filename");
-									
-									filename = saveFile(filename, command.getContentDict().get("content"));
-									
-									if(filename.isEmpty()){
-										logger.writeLog(LogLevel.ERROR, "SocketReadInput - Não foi possivel salvar o arquivo enviado"); 
-										continue;
-									}
-									
-									String name = command.getInfoDict().get("name");
-									LocalDateTime datetime = LocalDateTime.parse(command.getInfoDict().get("datetime"));
-									
-									String path = config.containsKey("downloadfilepath")? config.get("downloadfilepath") : "./downloads/";
-									
-									ligthUI.createNewMessage(name, datetime, path + filename, MessageDirection.RECEIVING, commandType.FILE);
-								}
-								break;
-								default:
-									logger.writeLog(LogLevel.ERROR, "SocketReadInput - Unknown command type command="+commandStr);
-							}
-						}
-					}
-					catch(Exception ex){
-						logger.writeLog(LogLevel.ERROR, "SocketReadInput - " + Logger.dumpException(ex));
-					}
-						
-					try{
-						Thread.sleep(2000);
-					}
-					catch(Exception ex){}
-				}
-			}, "SocketReadInput").start();
-			
 		}
 		catch(Exception ex){
 			if(logger != null)
@@ -206,7 +107,7 @@ public class LightMessageSocket{
 			if(logger != null)
 				logger.writeLog(LogLevel.INFO, "Closing Socket");
 			
-			if(running){
+			if(readInput.isRunning()){
 				OutputStream out = sock.getOutputStream();
 				
 				String commandStr = "type="+commandType.CLOSE.ordinal();
@@ -215,6 +116,13 @@ public class LightMessageSocket{
 
 				out.write(commandStr.getBytes("UTF-8"));
 				out.flush();
+
+				readInput.stopRunning();
+				while(readInput.isRunning()){
+					try{
+						Thread.sleep(2000);
+					}catch(Exception ex) {}
+				}
 			}
 		}
 		catch(Exception ex)
@@ -235,87 +143,10 @@ public class LightMessageSocket{
 		}
 	}
 	
-	protected String saveFile(String filename, String content){
-		String newFilename = "";
-		
-		try{
-			String path = config.containsKey("downloadfilepath")? config.get("downloadfilepath") : "./downloads/"; 
-			
-			newFilename = filename;
-			
-			File saveFile = new File(path + filename);
-			
-			saveFile.getParentFile().mkdir();
-			
-			int quant = 0;
-			while(!saveFile.createNewFile()){
-				++quant;
-				
-				newFilename = quant + "_" + filename;
-				
-				saveFile = new File(path + newFilename);
-			}
-			
-			logger.writeLog(LogLevel.INFO, "content=" + content);
-
-			ByteArrayInputStream contentBytesStream = new ByteArrayInputStream(Base64.getDecoder().decode(content));
-
-			String mimeType = URLConnection.guessContentTypeFromName(filename);
-
-			if(mimeType != null && !mimeType.isEmpty() && mimeType.toLowerCase().startsWith("image/"))
-			{ 
-
-				BufferedImage contentImgBuff = ImageIO.read(contentBytesStream);
-
-				String format = mimeType.toLowerCase().split("/")[1];
-				
-				ImageIO.write(contentImgBuff, format, saveFile);
-
-			}
-			else
-			{
-
-				FileOutputStream fileOut = new FileOutputStream(saveFile);
-
-				byte[] buffer = new byte[5000];
-
-				int readLenght = -1; 
-				
-				do{
-
-					readLenght = contentBytesStream.read(buffer, 0, buffer.length);
-
-					if(readLenght > -1)
-						fileOut.write(buffer, 0, readLenght);
-
-				}while(readLenght > -1);
-
-				fileOut.close();
-
-				/*
-				BufferedWriter bw = new BufferedWriter( new FileWriter(saveFile) );
-				
-				String originalContent = new String(contentBytes, "UTF-8");
-
-				bw.write(originalContent, 0, originalContent.length());
-				bw.close();
-				*/
-			}
-
-			contentBytesStream.close();
-		
-		}catch(Exception ex){
-			logger.writeLog(LogLevel.ERROR, "saveFile - " + Logger.dumpException(ex));
-			return "";
-		}
-		
-		return newFilename;
-	}
-	
 	public String processesSending(String userName, String content, commandType type){
 		try{
-			if(running && !LightMessageSocket.tryConnection(sock, address, logger)){
-				running = false;
+			if(readInput.isRunning() && !LightMessageSocket.tryConnection(sock)){
+				closeSocket();
 				return "\nNão foi possivel estabelecer uma conexão, tente novamente mais tarde!\n";
 			}
 			

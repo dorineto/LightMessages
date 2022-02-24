@@ -38,8 +38,6 @@ class LightMessageSocketServer {
 			servSock = new ServerSocket(port, connectionQuantity);
 			servSock.setSoTimeout(15000);
 
-
-			// TODO: See the causo of "Unresolved compilation problem" Exception
 			this.serverSocketAccept = new ServerSocketAccept(servSock, sockets);
 			this.serverSocketAccept.start();
 

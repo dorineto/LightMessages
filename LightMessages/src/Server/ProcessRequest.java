@@ -108,6 +108,8 @@ public class ProcessRequest extends ThreadSafeStop {
                             synchronized(sockets){
                                 sockets.remove(socketUUID);
                             }
+
+                            this.stopRunning = true;
                         } 
                         else 
                         {

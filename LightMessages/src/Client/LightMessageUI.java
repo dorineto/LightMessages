@@ -9,6 +9,7 @@ import java.io.*;
 
 import Commons.*;
 
+// TODO: See the memory leak
 class LightMessageUI extends JFrame{
 	public enum UIState{
 		LOGIN,
