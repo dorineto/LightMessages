@@ -2,8 +2,6 @@ package Client;
 
 import java.net.*;
 import java.io.*;
-import java.nio.*;
-import java.util.*;
 import java.time.LocalDateTime;
 
 import Commons.*;
@@ -20,15 +18,8 @@ public class ReadInput extends ThreadSafeStop {
         this.sock = sock;
         this.ligthUI = ligthUI;
 
-        try{
-            this.logger = Logger.getLogger();
-        }
-        catch(Exception ex){
-            throw new RuntimeException("ReadInput - Ex: " + Logger.dumpException(ex));
-        }
+        this.logger = Logger.getLogger();
     }
-
-    public String getUniqueID() { return this.uniqueID; }
 
     @Override
     public void run(){
@@ -45,60 +36,28 @@ public class ReadInput extends ThreadSafeStop {
                 
                 InputStream inpStr = sock.getInputStream();
                 if(inpStr.available() > 0){
-                    ArrayList<byte[]> contentChuncks = new ArrayList<byte[]>();
-                    int totalBytes = 0;
-
-                    byte[] buffer = new byte[5000];
-
-                    int readLenght = inpStr.read(buffer, 0, buffer.length);
                     
-                    contentChuncks.add(Arrays.copyOf(buffer, readLenght));
-                    totalBytes += readLenght;
-
-                    while(inpStr.available() > 0){
-                        readLenght = inpStr.read(buffer, 0, 5000);
-
-                        if(readLenght > -1){									
-                            contentChuncks.add(Arrays.copyOf(buffer, readLenght));
-                            totalBytes += readLenght;
-                        }
-                    }
-
-                    ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
-
-                    for(byte[] contentChunck : contentChuncks)
-                        finalBuffer.put(contentChunck);
-
-                    String commandStr = new String(finalBuffer.array(), "UTF-8");
-
-                    commandStr = new String(Base64.getDecoder().decode(commandStr), "UTF-8");
+                    Command command = Command.ProcessesInputStream(inpStr);
                     
-                    Command command = Command.parse(commandStr);
-                    
-                    if(!command.getContentDict().containsKey("type"))
-                    {
-                        logger.writeLog(LogLevel.ERROR, "SocketReadInput - Invalid command command="+commandStr);
+                    String errorMessage = Command.ValidadeCommand(command);
+
+                    if(errorMessage != null && !errorMessage.trim().equals("")){
+                        logger.writeLog(LogLevel.ERROR, "SocketReadInput - Invalid command - " + errorMessage);
                         continue;
                     }
-                    
-                    logger.writeLog(LogLevel.DEBUG, "SocketReadInput - processing command command="+commandStr);
-                    
+
                     int type = Integer.parseInt( command.getContentDict().get("type") );
+
+                    logger.writeLog(LogLevel.DEBUG, "SocketReadInput - processing command - type = " + type);
                     
                     switch(type){
                         case 2: { // UUID
-                            if(!command.getContentDict().containsKey("content"))
-                            {
-                                logger.writeLog(LogLevel.ERROR, "SocketReadInput - Invalid command command="+commandStr);
-                                continue;
-                            }
-                            
                             uniqueID = command.getContentDict().get("content");
-                            logger.writeLog(LogLevel.DEBUG, "SocketReadInput - Recived UUID uuid="+uniqueID);
+                            logger.writeLog(LogLevel.DEBUG, "SocketReadInput - Recived UUID uuid=" + uniqueID);
                         }
                         break;
                         case 3: { // CLOSE
-                            logger.writeLog(LogLevel.ERROR, "SocketReadInput - Server Socket closed command="+commandStr);
+                            logger.writeLog(LogLevel.ERROR, "SocketReadInput - Server Socket closed");
                             this.stopRunning = true;
                             ligthUI.closeUI("SocketServer foi fechada!");									
                         }
@@ -111,17 +70,11 @@ public class ReadInput extends ThreadSafeStop {
                         }
                         break;
                         case 1: { // FILE
-                            if(!command.getContentDict().containsKey("filename"))
-                            {
-                                logger.writeLog(LogLevel.ERROR, "SocketReadInput - Invalid command command="+commandStr);
-                                continue;
-                            }
-                            
                             String filename = command.getContentDict().get("filename");
                             
                             filename = ProcessInput.saveFile(filename, command.getContentDict().get("content"));
                             
-                            if(filename.isEmpty()){
+                            if(errorMessage != null && !errorMessage.trim().equals("")){
                                 logger.writeLog(LogLevel.ERROR, "SocketReadInput - Não foi possivel salvar o arquivo enviado"); 
                                 continue;
                             }
@@ -135,7 +88,7 @@ public class ReadInput extends ThreadSafeStop {
                         }
                         break;
                         default:
-                            logger.writeLog(LogLevel.ERROR, "SocketReadInput - Unknown command type command="+commandStr);
+                            logger.writeLog(LogLevel.ERROR, "SocketReadInput - Unknown command type=" + type);
                     }
                 }
             }
@@ -151,4 +104,6 @@ public class ReadInput extends ThreadSafeStop {
 
 		this.running = false;
     }
+
+    public String getUniqueID() { return this.uniqueID; }
 }

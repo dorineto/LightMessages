@@ -19,19 +19,9 @@ public class Logger{
 		
 	}
 
-	public static Logger getLogger(String pathToLog) throws IOException, SecurityException {
-		if(Logger.singlogger == null)
-			Logger.singlogger = new Logger(pathToLog);
-
-		return Logger.singlogger;
-	}
-
-	public static Logger getLogger() throws IOException, SecurityException {
-		return Logger.getLogger("../log/default.log");
-	}
-	
 	public void writeLog(LogLevel loglevel, String log) {
-		try{
+		try
+		{
 			String datetime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss.SSS"));
 			
 			String logLine = "\n" + loglevel.name() + " - " + datetime + ": " + log;
@@ -43,10 +33,29 @@ public class Logger{
 	}
 	
 	public void close(){
-		try{
+		try
+		{
 			writer.close();
 		}
 		catch(Exception ex){}
+	}
+
+	public static Logger getLogger(String pathToLog) {
+		try
+		{
+			if(Logger.singlogger == null)
+				Logger.singlogger = new Logger(pathToLog);
+
+			return Logger.singlogger;
+		} 
+		catch(Exception ex)
+		{
+			throw new RuntimeException("getLogger - Ex: " + Logger.dumpException(ex));
+		}
+	}
+
+	public static Logger getLogger() {
+		return Logger.getLogger("../log/default.log");
 	}
 
 	public static String dumpException(Exception ex){

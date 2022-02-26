@@ -16,12 +16,7 @@ public class ServerSocketAccept extends ThreadSafeStop {
         this.servSock = servSock;
         this.sockets = sockets;
 
-        try{
-            this.logger = Logger.getLogger();
-        }
-        catch(Exception ex){
-            throw new RuntimeException("ServerSocketAccept - Ex: " + Logger.dumpException(ex));
-        }
+        this.logger = Logger.getLogger();
     }
 
     public void run(){
@@ -37,12 +32,17 @@ public class ServerSocketAccept extends ThreadSafeStop {
                     
                     logger.writeLog(LogLevel.DEBUG, "ServerSocketAccept - New Socket Accepted uuid=" + uuid);
 
-                    String commandStr = "type=" + commandType.UUID.ordinal() + "|content=" + uuid;
+                    Command command = new Command();
 
-                    commandStr = Base64.getEncoder().encodeToString(commandStr.getBytes("UTF-8"));
+                    Hashtable<String,String> info = command.getInfoDict();
+
+                    info.put("type", ((Integer)commandType.UUID.ordinal()).toString());
+                    info.put("content", uuid);                  
+
+                    String serCommand = Base64.getEncoder().encodeToString(command.Serialize().getBytes("UTF-8"));
 
                     OutputStream out = sock.getOutputStream();
-                    out.write(commandStr.getBytes("UTF-8"));
+                    out.write(serCommand.getBytes("UTF-8"));
                     out.flush();
 
                     SocketClient socketClient = new SocketClient(uuid, sock, sockets);
@@ -69,8 +69,7 @@ public class ServerSocketAccept extends ThreadSafeStop {
             try {
                 if (servSock != null && !servSock.isClosed())
                     servSock.close();
-            } catch (Exception ex2) {
-            }
+            } catch (Exception ex2) {}
         }
 
         this.running = false;

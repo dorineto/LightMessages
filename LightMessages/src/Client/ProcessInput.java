@@ -1,23 +1,14 @@
 package Client;
 
 import java.io.*;
-import java.net.*;
-import java.awt.image.*;
-import javax.imageio.*;
 import java.util.*;
 
 import Commons.*;
 
 public class ProcessInput {
-    public static String saveFile(String filename, String content){
-        Logger logger = null;
 
-        try{
-            logger = Logger.getLogger();
-        }
-        catch(Exception ex){
-            throw new RuntimeException("saveFile - Ex: " + Logger.dumpException(ex));
-        }
+    public static String saveFile(String filename, String content){
+        Logger logger = Logger.getLogger();
 
 		String newFilename = "";
 		
@@ -38,43 +29,25 @@ public class ProcessInput {
 				
 				saveFile = new File(path + newFilename);
 			}
-			
-			logger.writeLog(LogLevel.INFO, "content=" + content);
 
 			ByteArrayInputStream contentBytesStream = new ByteArrayInputStream(Base64.getDecoder().decode(content));
 
-			String mimeType = URLConnection.guessContentTypeFromName(filename);
+			FileOutputStream fileOut = new FileOutputStream(saveFile);
 
-			if(mimeType != null && !mimeType.isEmpty() && mimeType.toLowerCase().startsWith("image/"))
-			{ 
+			byte[] buffer = new byte[5000];
 
-				BufferedImage contentImgBuff = ImageIO.read(contentBytesStream);
+			int readLenght = -1; 
+			
+			do{
 
-				String format = mimeType.toLowerCase().split("/")[1];
-				
-				ImageIO.write(contentImgBuff, format, saveFile);
+				readLenght = contentBytesStream.read(buffer, 0, buffer.length);
 
-			}
-			else
-			{
+				if(readLenght > -1)
+					fileOut.write(buffer, 0, readLenght);
 
-				FileOutputStream fileOut = new FileOutputStream(saveFile);
+			}while(readLenght > -1);
 
-				byte[] buffer = new byte[5000];
-
-				int readLenght = -1; 
-				
-				do{
-
-					readLenght = contentBytesStream.read(buffer, 0, buffer.length);
-
-					if(readLenght > -1)
-						fileOut.write(buffer, 0, readLenght);
-
-				}while(readLenght > -1);
-
-				fileOut.close();
-			}
+			fileOut.close();
 
 			contentBytesStream.close();
 		
@@ -85,4 +58,5 @@ public class ProcessInput {
 		
 		return newFilename;
 	}
+	
 }

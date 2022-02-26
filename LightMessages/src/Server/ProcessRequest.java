@@ -2,7 +2,6 @@ package Server;
 
 import java.net.*;
 import java.io.*;
-import java.nio.*;
 import java.util.*;
 
 import Commons.*;
@@ -21,12 +20,8 @@ public class ProcessRequest extends ThreadSafeStop {
         this.socket = socket;
 
         this.sockets = sockets;
-
-        try{
-            this.logger = Logger.getLogger();
-        }catch(Exception ex){
-            throw new RuntimeException("ProcessRequest - " + socketUUID + " - Ex: " + Logger.dumpException(ex));
-        }
+        
+        this.logger = Logger.getLogger();
     }
 
     @Override
@@ -56,47 +51,17 @@ public class ProcessRequest extends ThreadSafeStop {
                     InputStream inpStream = socket.getInputStream();
                     if (inpStream.available() > 0) 
                     {
-                        ArrayList<byte[]> contentChunksList = new ArrayList<byte[]>();
 
-                        int totalBytes = 0;
+                        Command command = Command.ProcessesInputStream(inpStream, true);
 
-                        byte[] buffer = new byte[5000];
-                        int readLenght = inpStream.read(buffer, 0, buffer.length);
+                        String errorMessage = Command.ValidadeCommand(command);
 
-                        contentChunksList.add(Arrays.copyOf(buffer, readLenght));
-                        totalBytes += readLenght;
-
-                        while (inpStream.available() > 0) 
-                        {
-                            readLenght = inpStream.read(buffer, 0, 5000);
-
-                            if (readLenght > -1) 
-                            {
-                                contentChunksList.add(Arrays.copyOf(buffer, readLenght));
-                                totalBytes += readLenght;
-                            }
-                        }
-
-                        ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
-
-                        for (byte[] contentChunck : contentChunksList)
-                            finalBuffer.put(contentChunck);
-
-                        String commandStr = new String(finalBuffer.array(), "UTF-8");
-
-                        String decodedCommandStr = new String(Base64.getDecoder().decode(commandStr), "UTf-8");
-
-                        Command command = Command.parse(decodedCommandStr);
-
-                        if (!command.getContentDict().containsKey("type")) 
-                        {
-                            logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command "
-                                                        +"command=" + decodedCommandStr);
+                        if(errorMessage != null && !errorMessage.trim().equals("")){
+                            logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command - " + errorMessage);
                             continue;
                         }
 
-                        logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " -  Processing Command - "
-                                                    +"command=" + decodedCommandStr);
+                        logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " -  Processing Command");
 
                         int type = Integer.parseInt(command.getContentDict().get("type"));
 
@@ -113,16 +78,6 @@ public class ProcessRequest extends ThreadSafeStop {
                         } 
                         else 
                         {
-                            // Verifica se os componentes necessários em comum de
-                            // um comando de arquivo ou texto estão presentes
-                            if (!command.getContentDict().containsKey("content")
-                            || !command.getInfoDict().containsKey("name")
-                            || !command.getInfoDict().containsKey("datetime")) 
-                            {
-                                logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command "
-                                                            +"command=" + decodedCommandStr);
-                                continue;
-                            }
 
                             OutputStream outAux = null;
 
@@ -146,13 +101,13 @@ public class ProcessRequest extends ThreadSafeStop {
                                     if (!otherSocketKey.equalsIgnoreCase(socketUUID) && (!otherSocketAux.isClosed() && otherSocketAux.isConnected())) 
                                     {
 
-                                        logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID= "+ socketUUID + " - Sending UUID=" + otherSocketKey + ",command=" + decodedCommandStr);
+                                        logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID= "+ socketUUID + " - Sending UUID=" + otherSocketKey + ",type=" + type);
                                         
                                         outAux = otherSocketAux.getOutputStream();
 
                                         synchronized (outAux)
                                         {
-                                            outAux.write(finalBuffer.array());
+                                            outAux.write(command.getBytes());
                                             outAux.flush();
                                         }
                                         
@@ -160,7 +115,7 @@ public class ProcessRequest extends ThreadSafeStop {
                                 } 
                                 catch (IOException ex) 
                                 {
-                                    logger.writeLog(LogLevel.ERROR,"ProcessRequest - UUID= "+ socketUUID + " - Skiping Socket uuid=" + decodedCommandStr);
+                                    logger.writeLog(LogLevel.ERROR,"ProcessRequest - UUID= "+ socketUUID + " - Skiping Socket");
                                 } 
                                 catch (Exception ex)
                                 {

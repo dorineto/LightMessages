@@ -6,9 +6,6 @@ import java.util.Base64;
 import java.util.Hashtable;
 import java.time.LocalDateTime;
 
-import java.awt.image.*;
-import javax.imageio.*;
-
 import java.util.*;
 import java.nio.*;
 
@@ -29,38 +26,6 @@ public class LightMessageSocket{
 
 	public LightMessageSocket(LightMessageUI ligthUI){
 		this.ligthUI = ligthUI;
-	}
-	
-	public static InetSocketAddress getConnectionAddress() { return connectionAddress; }
-	public static Hashtable<String, String> getConfig () { return config; }
-	public static String getDownloadPath() { return downloadPath; }
-
-	public static boolean tryConnection(Socket sock){
-		Logger logger = null;
-
-		try{
-			logger = Logger.getLogger();
-		}
-		catch(Exception ex){
-			throw new RuntimeException("tryConnection - Ex: " + Logger.dumpException(ex));
-		}
-
-		int trys = 0;
-		while(trys < 3 && !sock.isConnected()){
-			try{
-				sock.connect(connectionAddress, 15000);
-			}
-			catch(SocketTimeoutException ex){
-				logger.writeLog(LogLevel.ERROR, "tryConnection - Socket timout connection - try="+(trys + 1));
-				trys++;
-			}
-			catch(Exception ex){
-				logger.writeLog(LogLevel.ERROR, "tryConnection - " + Logger.dumpException(ex));
-				break;
-			}
-		}
-		
-		return sock.isConnected();
 	}
 	
 	public void setup() throws Exception {
@@ -110,16 +75,22 @@ public class LightMessageSocket{
 			if(readInput.isRunning()){
 				OutputStream out = sock.getOutputStream();
 				
-				String commandStr = "type="+commandType.CLOSE.ordinal();
+				Command command = new Command();
 
-				commandStr = Base64.getEncoder().encodeToString(commandStr.getBytes("UTF-8"));
+				Hashtable<String, String> info = command.getInfoDict();
 
-				out.write(commandStr.getBytes("UTF-8"));
+				info.put("type", ((Integer)commandType.CLOSE.ordinal()).toString());
+
+				String serCommand = Base64.getEncoder().encodeToString(command.Serialize().getBytes("UTF-8"));
+
+				out.write(serCommand.getBytes("UTF-8"));
 				out.flush();
 
 				readInput.stopRunning();
-				while(readInput.isRunning()){
-					try{
+				while(readInput.isRunning())
+				{
+					try
+					{
 						Thread.sleep(2000);
 					}catch(Exception ex) {}
 				}
@@ -143,6 +114,7 @@ public class LightMessageSocket{
 		}
 	}
 	
+	// TODO: Make this method a thread that send messages on a queue asynchronously, to give a better response to the user
 	public String processesSending(String userName, String content, commandType type){
 		try{
 			if(readInput.isRunning() && !LightMessageSocket.tryConnection(sock)){
@@ -150,12 +122,19 @@ public class LightMessageSocket{
 				return "\nNão foi possivel estabelecer uma conexão, tente novamente mais tarde!\n";
 			}
 			
-			String command = "&|name=" + userName + "|datetime=" + LocalDateTime.now();
-			
-			String commandContent = "type=" + type.ordinal() + "|content=";
-			
+			Command commandSend =  new Command();
+
+			Hashtable<String, String> infoDic = commandSend.getInfoDict();
+
+			infoDic.put("name", userName);
+			infoDic.put("datetime", LocalDateTime.now().toString());
+
+			Hashtable<String, String> contentDic = commandSend.getContentDict();
+
+			contentDic.put("type", ((Integer)type.ordinal()).toString());
+
 			if(type == commandType.TEXT){
-				commandContent += content;
+				contentDic.put("content", content);
 			}
 			else if(type == commandType.FILE){
 				File contentFile = new File(content);
@@ -164,61 +143,41 @@ public class LightMessageSocket{
 					return "Arquivo não encontrado! Favor verifique se o cominho está correto.";
 					
 				if(!contentFile.canRead())
-					return "Sem permição para leitura desse arquivo!";
+					return "Sem permissão para leitura desse arquivo!";
 
 				try{
 					String fileContent = "";
 
-					String mimeType = URLConnection.guessContentTypeFromName(contentFile.getName());
+					FileInputStream inputFile = new FileInputStream(contentFile);
 
-					if(mimeType != null && !mimeType.isEmpty() && mimeType.toLowerCase().startsWith("image/"))
-					{
+					ArrayList<byte[]> contentChunks = new ArrayList<>();
 
-						BufferedImage sendBuffImg = ImageIO.read(contentFile);
+					byte[] buffer = new byte[5000];
 
-						ByteArrayOutputStream imgByteArr = new ByteArrayOutputStream();
+					int readLenght = -1;
 
-						String format = mimeType.toLowerCase().split("/")[1];
-						ImageIO.write(sendBuffImg, format, imgByteArr);
+					int totalBytes = 0;
+					
+					do{
+						readLenght = inputFile.read(buffer, 0, buffer.length);
 
-						fileContent = Base64.getEncoder().encodeToString(imgByteArr.toByteArray());
-						
-						imgByteArr.close();
-					}
-					else
-					{
+						if (readLenght > -1){
+							contentChunks.add(Arrays.copyOf(buffer, readLenght));
+							totalBytes += readLenght;
+						}
+					}while(readLenght > -1);
 
-						FileInputStream inputFile = new FileInputStream(contentFile);
+					inputFile.close();
 
-						ArrayList<byte[]> contentChunks = new ArrayList<>();
+					ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
 
-						byte[] buffer = new byte[5000];
+					for(byte[] contentChunk : contentChunks)
+						finalBuffer.put(contentChunk);
 
-						int readLenght = -1;
+					fileContent += Base64.getEncoder().encodeToString(finalBuffer.array());
 
-						int totalBytes = 0;
-						
-						do{
-							readLenght = inputFile.read(buffer, 0, buffer.length);
-
-							if (readLenght > -1){
-								contentChunks.add(Arrays.copyOf(buffer, readLenght));
-								totalBytes += readLenght;
-							}
-						}while(readLenght > -1);
-
-						inputFile.close();
-
-						ByteBuffer finalBuffer = ByteBuffer.allocate(totalBytes);
-
-						for(byte[] contentChunk : contentChunks)
-							finalBuffer.put(contentChunk);
-
-						fileContent += Base64.getEncoder().encodeToString(finalBuffer.array());
-
-					}
-
-					commandContent += fileContent + "|filename=" + contentFile.getName();
+					contentDic.put("content", fileContent);
+					contentDic.put("filename", contentFile.getName());
 				}
 				catch(Exception ex){
 					logger.writeLog(LogLevel.ERROR, "processesSending - "+ Logger.dumpException(ex));
@@ -229,14 +188,14 @@ public class LightMessageSocket{
 			else{
 				return "Tipo de envio desconhecido!";
 			}
-			
-			command = Base64.getEncoder().encodeToString((commandContent + command).getBytes("UTF-8"));
+
+			String serCommand = Base64.getEncoder().encodeToString(commandSend.Serialize().getBytes("UTF-8"));
 
 			OutputStream out = sock.getOutputStream();
-			out.write(command.getBytes("UTF-8"));
+			out.write(serCommand.getBytes("UTF-8"));
 			out.flush();
 			
-			logger.writeLog(LogLevel.DEBUG, "processesSending - Sended - command=" + command);
+			logger.writeLog(LogLevel.DEBUG, "processesSending - Sended - type=" + type.ordinal());
 		}
 		catch(Exception ex){
 			logger.writeLog(LogLevel.ERROR, "processesSending - " + Logger.dumpException(ex));
@@ -245,5 +204,34 @@ public class LightMessageSocket{
 		
 		return "";
 	}
-	
+
+	public static InetSocketAddress getConnectionAddress() { return connectionAddress; }
+	public static Hashtable<String, String> getConfig () { return config; }
+	public static String getDownloadPath() { return downloadPath; }
+
+	public static boolean tryConnection(Socket sock){
+		Logger logger = Logger.getLogger();
+
+		int trys = 0;
+		while(trys < 3 && !sock.isConnected())
+		{
+			try
+			{
+				sock.connect(connectionAddress, 15000);
+			}
+			catch(SocketTimeoutException ex)
+			{
+				logger.writeLog(LogLevel.ERROR, "tryConnection - Socket timout connection - try="+(trys + 1));
+				trys++;
+			}
+			catch(Exception ex)
+			{
+				logger.writeLog(LogLevel.ERROR, "tryConnection - " + Logger.dumpException(ex));
+				break;
+			}
+		}
+		
+		return sock.isConnected();
+	}
+
 }

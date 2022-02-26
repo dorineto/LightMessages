@@ -26,6 +26,11 @@ class LightMessageSocketServer {
 				throw new Exception("setup - logpath not configure");
 
 			logger = Logger.getLogger(config.get("logpath"));
+			if(logger == null){
+				System.out.println("setup - was no possible to create a logger");
+				System.exit(1);
+			}
+				
 
 			if (!config.containsKey("serverport"))
 				throw new Exception("setup - serverport not configure");
@@ -42,19 +47,16 @@ class LightMessageSocketServer {
 			this.serverSocketAccept.start();
 
 		} catch (Exception ex) {
-			if (logger == null)
-				System.out.println("setup - " + ex);
-			else
+			try {
 				logger.writeLog(LogLevel.ERROR, "setup - " + Logger.dumpException(ex));
 
-			try {
 				if (servSock != null && !servSock.isClosed())
 					servSock.close();
+				
 			} catch (Exception ex2) {
-				if (logger == null)
-					System.out.println("setup - " + Logger.dumpException(ex2));
-				else
+				try{
 					logger.writeLog(LogLevel.ERROR, "setup - " + Logger.dumpException(ex2));
+				}catch(Exception ex3){}
 			}
 		}
 
@@ -65,10 +67,7 @@ class LightMessageSocketServer {
 		@Override
 		public void run(){
 			try {
-				if (logger == null)
-					System.out.println("\n\nEnding Server...\n");
-				else
-					logger.writeLog(LogLevel.INFO, "Ending Server...");
+				logger.writeLog(LogLevel.INFO, "Ending Server...");
 				
 				serverSocketAccept.stopRunning();
 				while(serverSocketAccept.isRunning()){
@@ -90,13 +89,7 @@ class LightMessageSocketServer {
 
 						try {
 							if (!auxSocket.isClosed() && auxSocket.isConnected()) {
-								if (logger == null)
-									System.out.println("LightMessageSocketServerShutdownHook - Closing uuid="
-											+ socketEntry.getKey());
-								else
-									logger.writeLog(LogLevel.DEBUG,
-											"LightMessageSocketServerShutdownHook - Closing uuid="
-													+ socketEntry.getKey());
+								logger.writeLog(LogLevel.DEBUG, "LightMessageSocketServerShutdownHook - Closing uuid=" + socketEntry.getKey());
 
 								String commandStr = "type=" + commandType.CLOSE.ordinal();
 
@@ -106,38 +99,23 @@ class LightMessageSocketServer {
 
 								auxSocket.close();
 							}
-						} catch (IOException ex) {
-						} catch (Exception ex) {
-							if (logger == null)
-								System.out
-										.println("LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
-							else
-								logger.writeLog(LogLevel.ERROR,
-										"LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
+						} catch (IOException ex) {} 
+						catch (Exception ex) {
+							logger.writeLog(LogLevel.ERROR,"LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 						}
 
 					}
 				}
 			} catch (Exception ex) {
-				if (logger == null)
-					System.out.println("LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
-				else
-					logger.writeLog(LogLevel.ERROR,
-							"LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
+				logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 			} finally {
 				try {
 					servSock.close();
 				} catch (Exception ex) {
-					if (logger == null)
-						System.out.println("LightMessageSocketServerShutdownHook - " + ex);
-					else
-						logger.writeLog(LogLevel.ERROR,
-								"LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
+					logger.writeLog(LogLevel.ERROR, "LightMessageSocketServerShutdownHook - " + Logger.dumpException(ex));
 				}
 
-				if (logger != null)
-					logger.close();
-
+				logger.close();
 			}
 		}
 	}
