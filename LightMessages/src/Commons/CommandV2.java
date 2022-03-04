@@ -28,8 +28,35 @@ public class CommandV2 {
         this.content = content;
     }
 
+	public static CommandV2 ProcessesInputStream(InputStream inpStream, boolean fillBytes, boolean fillDecodedString) throws IOException{
+        return new CommandV2(CommandType.CLOSE, "a", 0, ByteBuffer.wrap(new byte[] {}));
+    }
+
+    public enum FieldBytes {
+        INI  (new int[] {0xF7, 0xF3})
+        ,FIN (new int[] {0xF3, 0xF7})
+        ,HS  (new int[] {0x48, 0x53})
+        ,US  (new int[] {0x55, 0x50})
+        ,U   (new int[] {0x55})
+        ,TP  (new int[] {0x54, 0x50})
+        ,FS  (new int[] {0x46, 0x53})
+        ,F   (new int[] {0x46})
+        ,CS  (new int[] {0x43, 0x53});
+
+        private final int[] fieldVal;
+
+        FieldBytes(int[] fieldVal){
+            this.fieldVal = fieldVal;
+        }
+
+        public int[] getFieldVal(){ return this.fieldVal; }
+    }
+
     public enum CommandType {
-        UUID(1),TEXT(2),FILE(3),CLOSE(255);
+        UUID(0x01)
+        ,TEXT(0x02)
+        ,FILE(0x03)
+        ,CLOSE(0xFF);
 
         private final int type;
 
