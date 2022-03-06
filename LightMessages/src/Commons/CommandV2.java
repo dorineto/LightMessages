@@ -5,12 +5,28 @@ import java.io.*;
 
 public class CommandV2 {
     private CommandType type;
-    private String username;
-    private long timestamp;
+    private String username = null;
+    private long timestamp  = -1L;
 
-    private FileInfo fileInfo;
+    private FileInfo fileInfo = null;
 
-    private ByteBuffer content;
+    private ByteBuffer content = null;
+
+    public CommandV2(CommandType type){
+        this.type = type;
+    }
+
+    public CommandV2(CommandType type, ByteBuffer content){
+        this.type = type;
+        this.content = content;
+    }
+
+    public CommandV2(CommandType type, String username, long timestamp, ByteBuffer content){
+        this.type = type;
+        this.username = username;
+        this.timestamp = timestamp;
+        this.content = content;
+    }
 
     public CommandV2(CommandType type, String username, long timestamp, FileInfo fileInfo, ByteBuffer content){
         this.type = type;
@@ -20,17 +36,19 @@ public class CommandV2 {
         this.content = content;
     }
 
-    public CommandV2(CommandType type, String username, long timestamp, ByteBuffer content){
-        this.type = type;
-        this.username = username;
-        this.timestamp = timestamp;
-        this.fileInfo = null;
-        this.content = content;
+	public static CommandV2 processesInputStream(InputStream inpStream) {
+        return new CommandV2(CommandType.CLOSE);
     }
 
-	public static CommandV2 ProcessesInputStream(InputStream inpStream, boolean fillBytes, boolean fillDecodedString) throws IOException{
-        return new CommandV2(CommandType.CLOSE, "a", 0, ByteBuffer.wrap(new byte[] {}));
+    public byte[] serialize() {
+        return new byte[] {};
     }
+
+    public CommandType getType(){ return this.type; }
+    public String getUsername(){ return this.username; }
+    public long getTimestamp(){ return this.timestamp; }
+    public FileInfo getFileInfo(){ return this.fileInfo; }
+    public ByteBuffer getContent(){ return this.content; }
 
     public enum FieldBytes {
         INI  (new int[] {0xF7, 0xF3})
@@ -67,7 +85,7 @@ public class CommandV2 {
         public int getType(){ return this.type; }
     }
 
-    public class FileInfo{
+    public static class FileInfo{
         private String filename;
 
         public FileInfo(){
