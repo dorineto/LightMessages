@@ -2,6 +2,7 @@ package Commons;
 
 import java.nio.*;
 import java.io.*;
+import java.util.*;
 
 public class CommandV2 {
     private CommandType type;
@@ -37,7 +38,28 @@ public class CommandV2 {
     }
 
 	public static CommandV2 processesInputStream(InputStream inpStream) {
-        return new CommandV2(CommandType.CLOSE);
+        try 
+        {
+            ByteBuffer fieldBytes = ByteBuffer.allocate(255);
+
+            if(inpStream.read(fieldBytes.array(), 0, 2) < -1)
+                throw new IllegalArgumentException("Unexpected end of packed");
+
+            byte[] auxBuffer = new byte[2];
+
+            if(Arrays.equals(fieldBytes.array(), FieldBytes.INI.getFieldVal()))
+                throw new IllegalArgumentException("The package don't start with the INI mark");
+
+            inpStream.read(headerSizeBytes, 0, headerSizeBytes.length);
+
+            return new CommandV2(CommandType.CLOSE);
+        }
+        catch(IOException ex){
+            //Logger logger = Logger.getLogger();
+            ex.printStackTrace();
+
+            return null;
+        }
     }
 
     public byte[] serialize() {
