@@ -44,13 +44,21 @@ public class CommandV2 {
 
             if(inpStream.read(fieldBytes.array(), 0, 2) < -1)
                 throw new IllegalArgumentException("Unexpected end of packed");
-
-            byte[] auxBuffer = new byte[2];
-
-            if(Arrays.equals(fieldBytes.array(), FieldBytes.INI.getFieldVal()))
+            
+            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), 2), FieldBytes.INI.getFieldVal()))
                 throw new IllegalArgumentException("The package don't start with the INI mark");
 
-            inpStream.read(headerSizeBytes, 0, headerSizeBytes.length);
+            if(inpStream.read(fieldBytes.array(), 0, 2) < -1)
+                throw new IllegalArgumentException("Unexpected end of packed");
+
+            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), 2), FieldBytes.HS.getFieldVal()))
+                throw new IllegalArgumentException("The package don't contains HS field");
+
+            inpStream.read(fieldBytes.array(), 0, 4);
+
+            long headerSize = fieldBytes.getInt(0) & 0xFFFFFFFF;
+
+            System.out.println(headerSize);
 
             return new CommandV2(CommandType.CLOSE);
         }
@@ -73,23 +81,23 @@ public class CommandV2 {
     public ByteBuffer getContent(){ return this.content; }
 
     public enum FieldBytes {
-        INI  (new int[] {0xF7, 0xF3})
-        ,FIN (new int[] {0xF3, 0xF7})
-        ,HS  (new int[] {0x48, 0x53})
-        ,US  (new int[] {0x55, 0x50})
-        ,U   (new int[] {0x55})
-        ,TP  (new int[] {0x54, 0x50})
-        ,FS  (new int[] {0x46, 0x53})
-        ,F   (new int[] {0x46})
-        ,CS  (new int[] {0x43, 0x53});
+        INI  (new byte[] {(byte)0xF7, (byte)0xF3})
+        ,FIN (new byte[] {(byte)0xF3, (byte)0xF7})
+        ,HS  (new byte[] {(byte)0x48, (byte)0x53})
+        ,US  (new byte[] {(byte)0x55, (byte)0x50})
+        ,U   (new byte[] {(byte)0x55})
+        ,TP  (new byte[] {(byte)0x54, (byte)0x50})
+        ,FS  (new byte[] {(byte)0x46, (byte)0x53})
+        ,F   (new byte[] {(byte)0x46})
+        ,CS  (new byte[] {(byte)0x43, (byte)0x53});
 
-        private final int[] fieldVal;
+        private final byte[] fieldVal;
 
-        FieldBytes(int[] fieldVal){
+        FieldBytes(byte[] fieldVal){
             this.fieldVal = fieldVal;
         }
 
-        public int[] getFieldVal(){ return this.fieldVal; }
+        public byte[] getFieldVal(){ return this.fieldVal; }
     }
 
     public enum CommandType {

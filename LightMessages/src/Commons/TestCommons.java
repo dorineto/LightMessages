@@ -1,16 +1,45 @@
 package Commons;
 
+import java.nio.*;
+import java.io.*;
+import java.util.*;
+
 public class TestCommons {
     public static void main(String[] args){
-        // 014060ba-05af-4837-b945-59737b4e7d9c
-        //a9194fc4-ab48-4a56-afe1-7508c6e25471
-        String uuidStr = "a.txt";
+        try
+        {
+            byte[] byteArr = new byte[]{
+                (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18
+            };
+            
+            InputStream stream = new ByteArrayInputStream(byteArr);
+    
+            ByteBuffer buffer = ByteBuffer.allocate(255);
+    
+            stream.read(buffer.array(), 0, 2);
+            
+            int fiedVal = buffer.getShort(0) & 0xFFFF;
 
+            System.out.println("fieldVal = " + fiedVal);
+
+            stream.read(buffer.array(), 0, 4);
+            
+            long value = buffer.getInt(0) & 0xFFFFFFFF;
+
+            System.out.println("value = " + value);
+        }
+        catch(IOException ex) 
+        {
+            System.out.println(ex);
+        }
+    }
+
+    public static void StringToHexBytes(String strToConvert){
         try{
             int i = 0;
 
             String str = "";
-            for(byte val : uuidStr.getBytes("UTF-8")){
+            for(byte val : strToConvert.getBytes("UTF-8")){
                 str += String.format("(byte)0x%x, ", val);
                 i++;
 
