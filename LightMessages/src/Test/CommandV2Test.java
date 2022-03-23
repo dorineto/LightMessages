@@ -106,7 +106,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x61 // a
         };
 
-        CommandV2 expectedCommand = new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, ByteBuffer.wrap(expectedContent));
+        CommandV2 expectedCommand = new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) });
 
         assertThis(command != null, "Command is null");
 
@@ -120,8 +120,9 @@ public class CommandV2Test implements TestSwitch {
                    String.format("Fileinfo don't match: - Expected: %s, Given: %s", expectedCommand.getFileInfo(), command.getFileInfo()));
         
         assertThis(command.getContent() != null, "Content is null"); 
-        assertThis(expectedCommand.getContent().array().length == command.getContent().array().length, "Content length don't match with the expected value");
-        assertThis(Arrays.equals(expectedCommand.getContent().array(), command.getContent().array()), "Content value don't match with the expected value");
+        assertThis(expectedCommand.getContent().length == 1, "Content chuncks should have length 1");
+        assertThis(expectedCommand.getContent()[0].array().length == command.getContent()[0].array().length, "Content length don't match with the expected value");
+        assertThis(Arrays.equals(expectedCommand.getContent()[0].array(), command.getContent()[0].array()), "Content value don't match with the expected value");
     }
 
     public void itShouldprocessesInputStreamAndReturnAUUIDCommand()
@@ -158,7 +159,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x35, (byte)0x34, (byte)0x37, (byte)0x31
         };
 
-        CommandV2 expectedCommand = new CommandV2(CommandV2.CommandType.UUID, ByteBuffer.wrap(expectedContent));
+        CommandV2 expectedCommand = new CommandV2(CommandV2.CommandType.UUID, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) });
 
         assertThis(command != null, "Command is null");
 
@@ -172,8 +173,9 @@ public class CommandV2Test implements TestSwitch {
                    String.format("Fileinfo don't match: - Expected: %s, Given: %s", expectedCommand.getFileInfo(), command.getFileInfo()));
         
         assertThis(command.getContent() != null, "Content is null"); 
-        assertThis(expectedCommand.getContent().array().length == command.getContent().array().length, "Content length don't match with the expected value");
-        assertThis(Arrays.equals(expectedCommand.getContent().array(), command.getContent().array()), "Content value don't match with the expected value");
+        assertThis(expectedCommand.getContent().length == 1, "Content chuncks should have length 1");
+        assertThis(expectedCommand.getContent()[0].array().length == command.getContent()[0].array().length, "Content length don't match with the expected value");
+        assertThis(Arrays.equals(expectedCommand.getContent()[0].array(), command.getContent()[0].array()), "Content value don't match with the expected value");
     }
 
     public void itShouldprocessesInputStreamAndReturnACloseCommand()
@@ -245,7 +247,7 @@ public class CommandV2Test implements TestSwitch {
 
         CommandV2.FileInfo expectedFileInfo = new CommandV2.FileInfo("a.txt");
 
-        CommandV2 expectedCommand = new CommandV2(CommandV2.CommandType.FILE, "a", 1645994122L, expectedFileInfo, ByteBuffer.wrap(expectedContent));
+        CommandV2 expectedCommand = new CommandV2(CommandV2.CommandType.FILE, "a", 1645994122L, expectedFileInfo, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) });
 
         assertThis(command != null, "Command is null");
 
@@ -261,8 +263,9 @@ public class CommandV2Test implements TestSwitch {
                    String.format("Filename don't match: - Expected: %s, Given: %s", expectedCommand.getFileInfo().getFilename(), command.getFileInfo().getFilename()));
         
         assertThis(command.getContent() != null, "Content is null"); 
-        assertThis(expectedCommand.getContent().array().length == command.getContent().array().length, "Content length length don't match with the expected value");
-        assertThis(Arrays.equals(expectedCommand.getContent().array(), command.getContent().array()), "Content value don't match with the expected value");
+        assertThis(expectedCommand.getContent().length == 1, "Content chuncks should have length 1");
+        assertThis(expectedCommand.getContent()[0].array().length == command.getContent()[0].array().length, "Content length don't match with the expected value");
+        assertThis(Arrays.equals(expectedCommand.getContent()[0].array(), command.getContent()[0].array()), "Content value don't match with the expected value");
     }
 
     public void itShouldProcessesInputCommandAndThrowException()
@@ -413,7 +416,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x61 // a
         };
 
-        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, ByteBuffer.wrap(expectedContent)));
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         expectedOutputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
@@ -438,7 +441,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x35, (byte)0x34, (byte)0x37, (byte)0x31
         };
 
-        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.UUID, ByteBuffer.wrap(expectedContent)));
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.UUID, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         expectedOutputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
@@ -471,7 +474,7 @@ public class CommandV2Test implements TestSwitch {
 
         CommandV2.FileInfo expectedFileInfo = new CommandV2.FileInfo("a.txt");
 
-        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, expectedFileInfo, ByteBuffer.wrap(expectedContent)));
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, expectedFileInfo, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         expectedOutputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]

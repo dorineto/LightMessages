@@ -9,7 +9,8 @@ public class TestCommons {
         try
         {
             byte[] byteArr = new byte[]{
-                (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18
+                (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,
+                (byte)0x12, (byte)0x11, (byte)0x17
             };
             
             InputStream stream = new ByteArrayInputStream(byteArr);
@@ -20,13 +21,13 @@ public class TestCommons {
             
             int fiedVal = buffer.getShort(0) & 0xFFFF;
 
-            System.out.println("fieldVal = " + fiedVal);
+            //System.out.println("fieldVal = " + fiedVal);
 
             stream.read(buffer.array(), 0, 4);
             
             long value = buffer.getInt(0) & 0xFFFFFFFF;
 
-            System.out.println("value = " + value);
+            //System.out.println("value = " + value);
         }
         catch(IOException ex) 
         {
