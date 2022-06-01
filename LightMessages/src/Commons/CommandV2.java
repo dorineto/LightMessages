@@ -42,32 +42,41 @@ public class CommandV2 {
         {
             ByteBuffer fieldBytes = ByteBuffer.allocate(255);
 
-            tryReadStream(inpStream, fieldBytes.array(), 0, 2);
+            // INI
+            CommandField currentCommandField = FieldBytes.INI.get();
 
-            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), 2), FieldBytes.INI.getFieldVal()))
+            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
+
+            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length), currentCommandField.getFieldMarkerBytes()))
                 throw new IllegalArgumentException("The package don't start with the INI mark");
 
-            tryReadStream(inpStream, fieldBytes.array(), 0, 2);
+            // HS
+            currentCommandField = FieldBytes.HS.get();
 
-            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), 2), FieldBytes.HS.getFieldVal()))
+            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
+
+            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length),currentCommandField.getFieldMarkerBytes()))
                 throw new IllegalArgumentException("The package don't contains HS field");
 
-            tryReadStream(inpStream, fieldBytes.array(), 0, 4);
+            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getValueSize());
 
             long headerSizeExpected = fieldBytes.getInt(0) & 0xFFFFFFFF;
 
             System.out.println("headerSizeExpected=" + headerSizeExpected);
+            
+            // HS
+            currentCommandField = FieldBytes.T.get();
 
             long headerSize = 0;
 
-            tryReadStream(inpStream, fieldBytes.array(), 0, 1);
+            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
 
-            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), 1), FieldBytes.T.getFieldVal()))
+            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length), currentCommandField.getFieldMarkerBytes()))
                 throw new IllegalArgumentException("The package don't contains T field");
 
-            tryReadStream(inpStream, fieldBytes.array(), 0, 1);
+            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getValueSize());
 
-            headerSize += 2;
+            headerSize += currentCommandField.getFieldMarkerBytes().length + currentCommandField.getValueSize();
 
             CommandType type;
 
@@ -87,9 +96,25 @@ public class CommandV2 {
                     break;
             }
 
-            
+            // Decode username, and if its a file decode too the filename
+            if(type == CommandType.TEXT || type == CommandType.FILE){
+                // US
+                currentCommandField = FieldBytes.US.get();
 
-            return new CommandV2(CommandType.CLOSE);
+                tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
+
+                if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length), currentCommandField.getFieldMarkerBytes()))
+                    throw new IllegalArgumentException("The package don't contains US field");
+
+                tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getValueSize());
+
+                headerSize += currentCommandField.getFieldMarkerBytes().length + currentCommandField.getValueSize();
+
+                int usernameSize = fieldBytes.getShort(0) & 0xFFFF;
+                
+            }
+
+            return new CommandV2(type);
         }
         catch(IOException ex){
             //Logger logger = Logger.getLogger();
@@ -115,24 +140,37 @@ public class CommandV2 {
     public ByteBuffer[] getContent(){ return this.content; }
 
     public enum FieldBytes {
-        INI  (new byte[] {(byte)0xF7, (byte)0xF3})
-        ,FIN (new byte[] {(byte)0xF3, (byte)0xF7})
-        ,HS  (new byte[] {(byte)0x48, (byte)0x53})
-        ,T   (new byte[] {(byte)0x54})
-        ,US  (new byte[] {(byte)0x55, (byte)0x50})
-        ,U   (new byte[] {(byte)0x55})
-        ,TP  (new byte[] {(byte)0x54, (byte)0x50})
-        ,FS  (new byte[] {(byte)0x46, (byte)0x53})
-        ,F   (new byte[] {(byte)0x46})
-        ,CS  (new byte[] {(byte)0x43, (byte)0x53});
+        INI  (new CommandField(new byte[] {(byte)0xF7, (byte)0xF3}, 0)) // Mark the start of a package
+        ,FIN (new CommandField(new byte[] {(byte)0xF3, (byte)0xF7}, 0)) // Mark the end of a package
+        ,HS  (new CommandField(new byte[] {(byte)0x48, (byte)0x53}, 4)) // Header size field
+        ,T   (new CommandField(new byte[] {(byte)0x54}, 1))             // Command type field
+        ,US  (new CommandField(new byte[] {(byte)0x55, (byte)0x50}, 2)) // Username size field
+        ,U   (new CommandField(new byte[] {(byte)0x55}, -1))                      // Username text
+        ,TP  (new CommandField(new byte[] {(byte)0x54, (byte)0x50}, 8)) // Timestamp field
+        ,FS  (new CommandField(new byte[] {(byte)0x46, (byte)0x53}, 2)) // Filename size field
+        ,F   (new CommandField(new byte[] {(byte)0x46}, -1))                       // Filename
+        ,CS  (new CommandField(new byte[] {(byte)0x43, (byte)0x53},4)); // Content size
 
-        private final byte[] fieldVal;
+        private final CommandField fieldVal;
 
-        FieldBytes(byte[] fieldVal){
+        FieldBytes(CommandField fieldVal){
             this.fieldVal = fieldVal;
         }
 
-        public byte[] getFieldVal(){ return this.fieldVal; }
+        public CommandField get(){ return this.fieldVal; }
+    }
+
+    public static class CommandField {
+        private byte[] fieldMarkerBytes;
+        private int valueSize; // In bytes
+
+        public CommandField(byte[] fieldMarkerBytes, int valueSize){
+            this.fieldMarkerBytes = fieldMarkerBytes;
+            this.valueSize = valueSize;
+        }
+
+        public byte[] getFieldMarkerBytes() { return this.fieldMarkerBytes; }
+        public int getValueSize() { return this.valueSize; }
     }
 
     public enum CommandType {
