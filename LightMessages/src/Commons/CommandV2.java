@@ -43,40 +43,17 @@ public class CommandV2 {
             ByteBuffer fieldBytes = ByteBuffer.allocate(255);
 
             // INI
-            CommandField currentCommandField = FieldBytes.INI.get();
+            getField(inpStream, fieldBytes.array(), FieldBytes.INI);
 
-            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
-
-            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length), currentCommandField.getFieldMarkerBytes()))
-                throw new IllegalArgumentException("The package don't start with the INI mark");
-
-            // HS
-            currentCommandField = FieldBytes.HS.get();
-
-            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
-
-            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length),currentCommandField.getFieldMarkerBytes()))
-                throw new IllegalArgumentException("The package don't contains HS field");
-
-            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getValueSize());
+            // Header size field - HS
+            getField(inpStream, fieldBytes.array(), FieldBytes.HS);
 
             long headerSizeExpected = fieldBytes.getInt(0) & 0xFFFFFFFF;
 
-            System.out.println("headerSizeExpected=" + headerSizeExpected);
+            //System.out.println("headerSizeExpected=" + headerSizeExpected);
             
-            // HS
-            currentCommandField = FieldBytes.T.get();
-
-            long headerSize = 0;
-
-            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
-
-            if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length), currentCommandField.getFieldMarkerBytes()))
-                throw new IllegalArgumentException("The package don't contains T field");
-
-            tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getValueSize());
-
-            headerSize += currentCommandField.getFieldMarkerBytes().length + currentCommandField.getValueSize();
+            // Type Field - T
+            long headerSize = getField(inpStream, fieldBytes.array(), FieldBytes.T);
 
             CommandType type;
 
@@ -95,26 +72,29 @@ public class CommandV2 {
                     type = CommandType.CLOSE;
                     break;
             }
+            
+            System.out.println("decodeType=" + type.name());
 
             // Decode username, and if its a file decode too the filename
+            String username = null;
+            FileInfo fileInfo = null;
             if(type == CommandType.TEXT || type == CommandType.FILE){
-                // US
-                currentCommandField = FieldBytes.US.get();
-
-                tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getFieldMarkerBytes().length);
-
-                if(!Arrays.equals(Arrays.copyOf(fieldBytes.array(), currentCommandField.getFieldMarkerBytes().length), currentCommandField.getFieldMarkerBytes()))
-                    throw new IllegalArgumentException("The package don't contains US field");
-
-                tryReadStream(inpStream, fieldBytes.array(), 0, currentCommandField.getValueSize());
-
-                headerSize += currentCommandField.getFieldMarkerBytes().length + currentCommandField.getValueSize();
+                // Username size - US
+                headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.US);
 
                 int usernameSize = fieldBytes.getShort(0) & 0xFFFF;
-                
+
+                System.out.println("usernameSize=" + usernameSize);
+
+                headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.U, usernameSize);
+
+                username = new String(fieldBytes.array(), 0, usernameSize, "UTF8");
+                System.out.println("username= " + username);
             }
 
-            return new CommandV2(type);
+            System.out.println("headerSizeCurrent=" + headerSize);
+
+            return new CommandV2(type, username, 0, fileInfo, null);
         }
         catch(IOException ex){
             //Logger logger = Logger.getLogger();
@@ -124,9 +104,40 @@ public class CommandV2 {
         }
     }
 
-    private static void tryReadStream(InputStream input, byte[] buffer, int off, int len) throws IllegalArgumentException, IOException{
+    private static void tryReadStream(InputStream input, byte[] buffer, int len, int off) throws IllegalArgumentException, IOException{
         if(input.read(buffer, off, len) == -1)
             throw new IllegalArgumentException("Unexpected end of packed");
+    }
+
+    private static void tryReadStream(InputStream input, byte[] buffer, int len) throws IllegalArgumentException, IOException{
+        tryReadStream(input, buffer, len, 0);
+    }
+
+    private static long getField(InputStream input, byte[] buffer, FieldBytes currentField, int valueSize) throws IllegalArgumentException, IOException{
+        CommandField currentCommandField = currentField.get();
+
+        tryReadStream(input, buffer, currentCommandField.getFieldMarkerBytes().length);
+
+        if(!Arrays.equals(Arrays.copyOf(buffer, currentCommandField.getFieldMarkerBytes().length),currentCommandField.getFieldMarkerBytes()))
+            throw new IllegalArgumentException("The package don't contains "+ currentField.name() +" field");
+
+        // If the value size is equals to 0 then the field dont have a value
+        if(currentCommandField.getValueSize() == 0)
+            return currentCommandField.getFieldMarkerBytes().length;
+
+        // If the value size is less then 0 (size is defined with other field), then valueSize have to be greater then 0 
+        if(currentCommandField.getValueSize() < 0 && valueSize < 1)
+            throw new IllegalArgumentException("The valueSize have to be greater then 0");
+
+        int currentValueSize = currentCommandField.getValueSize() > 0 ? currentCommandField.getValueSize() : valueSize;
+
+        tryReadStream(input, buffer, currentValueSize);
+
+        return currentCommandField.getFieldMarkerBytes().length + currentValueSize;
+    }
+
+    private static long getField(InputStream input, byte[] buffer, FieldBytes currentField) throws IllegalArgumentException, IOException{
+        return getField(input, buffer, currentField, 0);
     }
 
     public byte[] serialize() {
@@ -144,7 +155,7 @@ public class CommandV2 {
         ,FIN (new CommandField(new byte[] {(byte)0xF3, (byte)0xF7}, 0)) // Mark the end of a package
         ,HS  (new CommandField(new byte[] {(byte)0x48, (byte)0x53}, 4)) // Header size field
         ,T   (new CommandField(new byte[] {(byte)0x54}, 1))             // Command type field
-        ,US  (new CommandField(new byte[] {(byte)0x55, (byte)0x50}, 2)) // Username size field
+        ,US  (new CommandField(new byte[] {(byte)0x55, (byte)0x53}, 2)) // Username size field
         ,U   (new CommandField(new byte[] {(byte)0x55}, -1))                      // Username text
         ,TP  (new CommandField(new byte[] {(byte)0x54, (byte)0x50}, 8)) // Timestamp field
         ,FS  (new CommandField(new byte[] {(byte)0x46, (byte)0x53}, 2)) // Filename size field

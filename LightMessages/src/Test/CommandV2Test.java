@@ -220,7 +220,7 @@ public class CommandV2Test implements TestSwitch {
         byte[] input  = new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x22,                         // HS      = 34
-            (byte)0x54, (byte)0x02,                                                                         // T       = FILE (0x03) (2  B)
+            (byte)0x54, (byte)0x03,                                                                         // T       = FILE (0x03) (2  B)
             (byte)0x55, (byte)0x53, (byte)0x00, (byte)0x01,                                                 // US      = 1           (4  B)
             (byte)0x55, (byte)0x61,                                                                         // U       = a           (2  B)
             (byte)0x54, (byte)0x50, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x62, (byte)0x1b, // TP      = 1645994122  (10 B)
