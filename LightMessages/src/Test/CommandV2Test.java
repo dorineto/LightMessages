@@ -112,7 +112,7 @@ public class CommandV2Test implements TestSwitch {
 
         assertThis(expectedCommand.getType() == command.getType(), 
                    String.format("Command type don't match: - Expected: %s, Given: %s", expectedCommand.getType().name(), command.getType().name()));
-        assertThis(expectedCommand.getUsername() == command.getUsername(),
+        assertThis(expectedCommand.getUsername().equals(command.getUsername()),
                    String.format("Username don't match: - Expected: %s, Given: %s", expectedCommand.getUsername(), command.getUsername()));
         assertThis(expectedCommand.getTimestamp() == command.getTimestamp(),
                    String.format("Timestamp don't match: - Expected: %d, Given: %d", expectedCommand.getTimestamp(), command.getTimestamp()));
@@ -253,13 +253,13 @@ public class CommandV2Test implements TestSwitch {
 
         assertThis(expectedCommand.getType() == command.getType(), 
                    String.format("Command type don't match: - Expected: %s, Given: %s", expectedCommand.getType().name(), command.getType().name()));
-        assertThis(expectedCommand.getUsername() == command.getUsername(),
+        assertThis(expectedCommand.getUsername().equals(command.getUsername()),
                    String.format("Username don't match: - Expected: %s, Given: %s", expectedCommand.getUsername(), command.getUsername()));
         assertThis(expectedCommand.getTimestamp() == command.getTimestamp(),
                    String.format("Timestamp don't match: - Expected: %d, Given: %d", expectedCommand.getTimestamp(), command.getTimestamp()));
         
         assertThis(command.getFileInfo() != null, "FileInfo is null"); 
-        assertThis(expectedCommand.getFileInfo().getFilename() == command.getFileInfo().getFilename(),
+        assertThis(expectedCommand.getFileInfo().getFilename().equals(command.getFileInfo().getFilename()),
                    String.format("Filename don't match: - Expected: %s, Given: %s", expectedCommand.getFileInfo().getFilename(), command.getFileInfo().getFilename()));
         
         assertThis(command.getContent() != null, "Content is null"); 

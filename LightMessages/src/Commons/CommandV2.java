@@ -49,8 +49,6 @@ public class CommandV2 {
             getField(inpStream, fieldBytes.array(), FieldBytes.HS);
 
             long headerSizeExpected = fieldBytes.getInt(0) & 0xFFFFFFFF;
-
-            //System.out.println("headerSizeExpected=" + headerSizeExpected);
             
             // Type Field - T
             long headerSize = getField(inpStream, fieldBytes.array(), FieldBytes.T);
@@ -72,29 +70,75 @@ public class CommandV2 {
                     type = CommandType.CLOSE;
                     break;
             }
-            
-            System.out.println("decodeType=" + type.name());
 
             // Decode username, and if its a file decode too the filename
             String username = null;
-            FileInfo fileInfo = null;
+            long timestamp = -1L;
             if(type == CommandType.TEXT || type == CommandType.FILE){
                 // Username size - US
                 headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.US);
 
                 int usernameSize = fieldBytes.getShort(0) & 0xFFFF;
 
-                System.out.println("usernameSize=" + usernameSize);
-
+                // Username - U
                 headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.U, usernameSize);
 
                 username = new String(fieldBytes.array(), 0, usernameSize, "UTF8");
-                System.out.println("username= " + username);
+
+                // Timestamp - TP
+                headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.TP);
+
+                timestamp = fieldBytes.getLong();
             }
 
-            System.out.println("headerSizeCurrent=" + headerSize);
+            FileInfo fileInfo = null;
+            if (type == CommandType.FILE){
+                // Filename size - FS
+                headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.FS);
 
-            return new CommandV2(type, username, 0, fileInfo, null);
+                int filenameSize = fieldBytes.getShort(0) & 0xFFFF;
+
+                // Filename - F
+                headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.F, filenameSize);
+
+                String filename = new String(fieldBytes.array(), 0, filenameSize, "UTF8");
+
+                fileInfo = new FileInfo(filename);
+            }
+
+            // Content size - CS
+            headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.CS);
+
+            if(headerSize != headerSizeExpected)
+                throw new IllegalArgumentException("The read header size is different from the read expected header size");
+
+            long contentSize = fieldBytes.getInt(0) & 0xFFFFFFFF;
+
+            ByteBuffer[] content = null;
+            if(contentSize > 0)
+            {
+                content =  new ByteBuffer[(int)(contentSize / Integer.MAX_VALUE) + 1];
+
+                long processedContentSize = contentSize;
+                int chunckSize;
+                byte[] auxBuffer;
+                for(int i = 0; i < content.length; i++){
+                    chunckSize = Integer.MAX_VALUE > processedContentSize? (int)processedContentSize : Integer.MAX_VALUE;
+
+                    auxBuffer = new byte[chunckSize];
+
+                    inpStream.read(auxBuffer, 0, chunckSize);
+
+                    content[i] = ByteBuffer.wrap(auxBuffer);
+
+                    processedContentSize -= chunckSize;
+                }
+            }
+
+            // FIN
+            getField(inpStream, fieldBytes.array(), FieldBytes.FIN);
+
+            return new CommandV2(type, username, timestamp, fileInfo, content);
         }
         catch(IOException ex){
             //Logger logger = Logger.getLogger();

@@ -6,6 +6,11 @@ import java.util.*;
 
 public class TestCommons {
     public static void main(String[] args){
+        
+    }
+
+    /*
+    public static void main(String[] args){
         try
         {
             byte[] byteArr = new byte[]{
@@ -55,4 +60,5 @@ public class TestCommons {
         }
         catch(Exception ex){}
     }
+    */
 }
