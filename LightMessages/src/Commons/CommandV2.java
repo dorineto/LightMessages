@@ -4,10 +4,12 @@ import java.nio.*;
 import java.io.*;
 import java.util.*;
 
+import javax.xml.bind.DatatypeConverter;
+
 public class CommandV2 {
     private CommandType type;
     private String username = null;
-    private long timestamp  = -1L;
+    private Long timestamp  = null;
 
     private FileInfo fileInfo = null;
 
@@ -22,14 +24,14 @@ public class CommandV2 {
         this.content = content;
     }
 
-    public CommandV2(CommandType type, String username, long timestamp, ByteBuffer[] content){
+    public CommandV2(CommandType type, String username, Long timestamp, ByteBuffer[] content){
         this.type = type;
         this.username = username;
         this.timestamp = timestamp;
         this.content = content;
     }
 
-    public CommandV2(CommandType type, String username, long timestamp, FileInfo fileInfo, ByteBuffer[] content){
+    public CommandV2(CommandType type, String username, Long timestamp, FileInfo fileInfo, ByteBuffer[] content){
         this.type = type;
         this.username = username;
         this.timestamp = timestamp;
@@ -73,7 +75,7 @@ public class CommandV2 {
 
             // Decode username, and if its a file decode too the filename
             String username = null;
-            long timestamp = -1L;
+            Long timestamp = null;
             if(type == CommandType.TEXT || type == CommandType.FILE){
                 // Username size - US
                 headerSize += getField(inpStream, fieldBytes.array(), FieldBytes.US);
@@ -185,12 +187,121 @@ public class CommandV2 {
     }
 
     public byte[] serialize() {
-        return new byte[] {};
+        try (ByteArrayOutputStream serializedHeaderBytes = new ByteArrayOutputStream()) {
+            ByteBuffer auxBuffer = ByteBuffer.allocate(8);
+
+            // Type - T
+            CommandField currentField = FieldBytes.T.get();
+
+            serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+            serializedHeaderBytes.write(this.type.getType());
+            
+            if(this.username != null && !this.username.trim().isEmpty())
+            {
+                // Username size - US
+                currentField = FieldBytes.US.get();
+                serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+
+                byte[] usernameBytes = this.username.getBytes("UTF8");
+
+                auxBuffer.putShort(0, (short)usernameBytes.length);
+                serializedHeaderBytes.write(Arrays.copyOf(auxBuffer.array(), Short.BYTES));
+
+                // Username - U
+                currentField = FieldBytes.U.get();
+                serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+                serializedHeaderBytes.write(usernameBytes);
+            }
+           
+            if(this.timestamp != null)
+            {
+                // Timestamp - TP
+                currentField = FieldBytes.TP.get();
+                serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+
+                auxBuffer.putLong(0, this.timestamp);
+                serializedHeaderBytes.write(Arrays.copyOf(auxBuffer.array(), Long.BYTES));
+            }
+
+            if(this.fileInfo != null)
+            {
+                // Filename size - FS
+                currentField = FieldBytes.FS.get();
+                serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+
+                byte[] filenameBytes = this.fileInfo.getFilename().getBytes("UTF8");
+
+                auxBuffer.putShort(0, (short)filenameBytes.length);
+                serializedHeaderBytes.write(Arrays.copyOf(auxBuffer.array(), Short.BYTES));
+
+                // Filename - F
+                currentField = FieldBytes.F.get();
+                serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+                serializedHeaderBytes.write(filenameBytes);
+            }
+
+            // Content size - CS
+            currentField = FieldBytes.CS.get();
+            serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+
+            long contentSize = 0;
+            if(this.content != null)
+            {
+                for (ByteBuffer contentChunck : this.content)
+                    contentSize += contentChunck.limit();
+            }
+
+            auxBuffer.putInt(0, (int)contentSize);
+            serializedHeaderBytes.write(Arrays.copyOf(auxBuffer.array(), Integer.BYTES));
+
+            byte[] headerContentBytes = serializedHeaderBytes.toByteArray();
+
+            serializedHeaderBytes.reset();
+
+            // INI
+            currentField = FieldBytes.INI.get();
+            serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+
+            // Header size = HS
+            currentField = FieldBytes.HS.get();
+            serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+
+            auxBuffer.putInt(0, headerContentBytes.length);
+            serializedHeaderBytes.write(Arrays.copyOf(auxBuffer.array(), Integer.BYTES));
+
+            // Join the package beging with the header content to complete the header
+            serializedHeaderBytes.write(headerContentBytes);
+
+            // Content
+            if(this.content != null)
+            {
+                for (ByteBuffer contentChunck : this.content)
+                    serializedHeaderBytes.write(contentChunck.array());
+            }
+
+            // FIN
+            currentField = FieldBytes.FIN.get();
+            serializedHeaderBytes.write(currentField.getFieldMarkerBytes());
+
+            return serializedHeaderBytes.toByteArray();
+        }
+        catch(UnsupportedEncodingException ex){
+            //Logger logger = Logger.getLogger();
+            ex.printStackTrace();
+
+            return null;
+        }
+        catch(IOException ex){
+            //Logger logger = Logger.getLogger();
+            ex.printStackTrace();
+
+            return null;
+        }
     }
 
     public CommandType getType(){ return this.type; }
     public String getUsername(){ return this.username; }
-    public long getTimestamp(){ return this.timestamp; }
+    public Long getTimestamp(){ return this.timestamp; }
     public FileInfo getFileInfo(){ return this.fileInfo; }
     public ByteBuffer[] getContent(){ return this.content; }
 
@@ -256,5 +367,20 @@ public class CommandV2 {
 
         public String getFilename() { return this.filename; }
         public void setFilename(String filename) { this.filename = filename; }
+
+        @Override
+        public boolean equals(Object obj){
+            if(!(obj instanceof FileInfo))
+                return false;
+
+            FileInfo castedObject = (FileInfo)obj;
+
+            return this.filename == castedObject.getFilename() || this.filename.equals(castedObject.getFilename());
+        }
+
+        @Override
+        public String toString(){
+            return this.filename;
+        }
     }
 }

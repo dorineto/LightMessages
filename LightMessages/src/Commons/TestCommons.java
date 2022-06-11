@@ -3,12 +3,56 @@ package Commons;
 import java.nio.*;
 import java.io.*;
 import java.util.*;
+import java.util.stream.*;
 
 public class TestCommons {
     public static void main(String[] args){
-        
+        Long a = null;
+
+        System.out.println(String.format("null = %s", a));
     }
 
+    /*
+    public static void main(String[] args){
+        
+        byte[] arrayA = new byte[] { 1, 2, 3 };
+        byte[] arrayB = new byte[] { 4, 5, 6 };
+
+
+        byte[] arrayC = null;
+        byte[] arrayD = null;
+        try(ByteArrayOutputStream output = new ByteArrayOutputStream()){
+            output.write(arrayA, 0, arrayA.length);
+            output.write(arrayB, 0, arrayB.length);
+
+            System.out.println("size=" + output.size());
+
+            arrayC = output.toByteArray();
+
+            for(byte val : arrayC)
+                System.out.print(val + " ");
+
+            output.reset();
+
+            output.write(arrayB, 0, arrayB.length);
+            output.write(arrayA, 0, arrayA.length);
+
+            arrayD = output.toByteArray();
+
+            System.out.println("\n");
+
+            for(byte val : arrayC)
+                System.out.print(val + " ");
+
+                System.out.println("");
+
+            for(byte val : arrayD)
+                System.out.print(val + " ");
+        }
+        catch(Exception ex){}
+
+    }
+    */
     /*
     public static void main(String[] args){
         try
@@ -62,3 +106,4 @@ public class TestCommons {
     }
     */
 }
+
