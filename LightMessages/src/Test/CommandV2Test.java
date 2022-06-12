@@ -5,6 +5,9 @@ import java.nio.*;
 import java.io.*;
 
 import Commons.CommandV2;
+import Commons.CommandV2.CommandType;
+import Commons.CommandV2.FileInfo;
+
 import static Test.TestMain.assertThis;
 
 public class CommandV2Test implements TestSwitch {
@@ -50,6 +53,16 @@ public class CommandV2Test implements TestSwitch {
         catch(AssertionError ex)
         {
             failedTests.add("itShouldReadInputAndSerializeOutputBeEquals - " + ex.getMessage());
+        }
+
+        try
+        {
+            this.itShouldCreateCommandAndThrowException();
+            System.out.println("itShouldCreateCommandAndThrowException - Passed");
+        }
+        catch(AssertionError ex)
+        {
+            failedTests.add("itShouldCreateCommandAndThrowException - " + ex.getMessage());
         }
 
         return failedTests;
@@ -172,8 +185,8 @@ public class CommandV2Test implements TestSwitch {
                     String.format("[TYPE = %s] - Filename don't match: - Expected: %s, Given: %s", typeName, expectedCommand.getFileInfo(), command.getFileInfo()));
 
             boolean contentCheck = command.getContent() == expectedCommand.getContent() || 
-                                   command.getContent().length == expectedCommand.getContent().length ||
-                                   Arrays.equals(expectedCommand.getContent()[0].array(), command.getContent()[0].array());
+                                   (command.getContent().length == expectedCommand.getContent().length &&
+                                   Arrays.equals(expectedCommand.getContent()[0].array(), command.getContent()[0].array()));
 
             assertThis(contentCheck, 
                     String.format("[TYPE = %s] - Content don't match with the expected value ", typeName)); 
@@ -186,7 +199,9 @@ public class CommandV2Test implements TestSwitch {
         // given
         ArrayList<byte[]> inputs = new ArrayList<byte[]>();
 
-        // command package without [INI] mark
+        ArrayList<String> testCasesLabel = new ArrayList<String>();
+
+        testCasesLabel.add("command package without [INI] mark");
         inputs.add(new byte[] {    
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
             (byte)0x54, (byte)0x02,                                                                         // T       = TEXT (0x02) (2  B)
@@ -199,7 +214,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // command package without [FIM] mark
+        testCasesLabel.add("command package without [FIM] mark");
         inputs.add(new byte[] {
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]    
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
@@ -212,7 +227,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x61,                                                                                     // Content = a           (1  B)
         });
 
-        // command package without header size
+        testCasesLabel.add("command package without header size");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x54, (byte)0x02,                                                                         // T       = TEXT (0x02) (2  B)
@@ -225,7 +240,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // command package without type
+        testCasesLabel.add("command package without type");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
@@ -238,7 +253,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // command package without content size
+        testCasesLabel.add("command package without content size");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
@@ -251,7 +266,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // command a text or a file package without username 
+        testCasesLabel.add("command a text or a file package without username");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
@@ -263,7 +278,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // command a text or a file package without timestamp 
+        testCasesLabel.add("command a text or a file package without timestamp");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
@@ -276,7 +291,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // command a text or a file package without content with content size grater than 0
+        testCasesLabel.add("command a text or a file package without content with content size grater than 0");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
@@ -288,7 +303,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // command a file package without file name
+        testCasesLabel.add("command a file package without file name");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x22,                         // HS      = 34
@@ -302,6 +317,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
+        // then
         for(int i = 0; i < inputs.size() - 1; i++) 
         {
             boolean hasThrown = false;
@@ -312,8 +328,92 @@ public class CommandV2Test implements TestSwitch {
             catch(IOException ex){}
             catch(IllegalArgumentException ex){ hasThrown = true; }
 
-            assertThis(hasThrown, String.format("For test %d wasn't throw an IllegalArgumentException", i + 1));
+            assertThis(hasThrown, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCasesLabel.get(i)));
         }
+    }
+    
+    public void itShouldCreateCommandAndThrowException()
+    {
+        // given
+        CommandV2 auxCommand = null;
+
+        ByteBuffer[] content  = new ByteBuffer[]{
+            ByteBuffer.wrap(new byte[] {
+                (byte)0x61 // a
+            })
+        };
+
+        // then
+        // TEXT tests
+        String testCaseDescriprion = "Text command without username";
+        try {
+            auxCommand = new CommandV2(CommandType.TEXT, null, 1645994122l, null, content);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+        testCaseDescriprion = "Text command without timestamp";
+        try {
+            auxCommand = new CommandV2(CommandType.TEXT, "a", null, null, content);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+        testCaseDescriprion = "Text command without content";
+        try {
+            auxCommand = new CommandV2(CommandType.TEXT, "a", 1645994122l, null, null);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+
+        // UUID tests
+        testCaseDescriprion = "UUID command without content";
+        try {
+            auxCommand = new CommandV2(CommandType.UUID, null, null, null, null);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+
+        // FILE tests
+        FileInfo fileInfo = new FileInfo("a.txt");
+
+        testCaseDescriprion = "File command without username";
+        try {
+            auxCommand = new CommandV2(CommandType.FILE, null, 1645994122l, fileInfo, content);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+        testCaseDescriprion = "File command without timestamp";
+        try {
+            auxCommand = new CommandV2(CommandType.FILE, "a", null, fileInfo, content);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+        testCaseDescriprion = "File command without file info";
+        try {
+            auxCommand = new CommandV2(CommandType.FILE, "a", 1645994122l, null, content);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+        testCaseDescriprion = "File command without content";
+        try {
+            auxCommand = new CommandV2(CommandType.FILE, "a", 1645994122l, fileInfo, null);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
     }
 
     public void itShouldSerializeCommands()
@@ -322,7 +422,6 @@ public class CommandV2Test implements TestSwitch {
         ArrayList<CommandV2> commandsToSerialize = new ArrayList<CommandV2>();
 
         ArrayList<byte[]> expectedOutputs = new ArrayList<byte[]>();
-
 
         // TEXT
         byte[] expectedContent = new byte[] {
@@ -429,7 +528,9 @@ public class CommandV2Test implements TestSwitch {
         //given
         ArrayList<byte[]> inputs = new ArrayList<byte[]>();
 
-        // TEXT
+        ArrayList<String> testCasesLabel  = new ArrayList<String>();
+
+        testCasesLabel.add("TEXT");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
@@ -443,7 +544,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // UUID
+        testCasesLabel.add("UUID");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x08,                         // HS      = 8 
@@ -457,7 +558,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
         
-        // CLOSE
+        testCasesLabel.add("CLOSE");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x08,                         // HS      = 8 
@@ -466,7 +567,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        // FILE
+        testCasesLabel.add("FILE");
         inputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
             (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x22,                         // HS      = 34
@@ -499,7 +600,7 @@ public class CommandV2Test implements TestSwitch {
             serializedCommand = command.serialize();
 
             assertThis(Arrays.equals(inputs.get(i), serializedCommand), 
-                    String.format("[test case %d] the input bytes and the serialized command don't match", i + 1));
+                    String.format("[%s] the input bytes and the serialized command don't match", testCasesLabel.get(i)));
             
         }
 

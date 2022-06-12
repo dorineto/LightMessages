@@ -16,27 +16,59 @@ public class CommandV2 {
     private ByteBuffer[] content = null;
 
     public CommandV2(CommandType type){
-        this.type = type;
+        setupValues(type, null, null, null, null);
     }
 
     public CommandV2(CommandType type, ByteBuffer[] content){
-        this.type = type;
-        this.content = content;
+        setupValues(type, null, null, null, content);
     }
 
     public CommandV2(CommandType type, String username, Long timestamp, ByteBuffer[] content){
-        this.type = type;
-        this.username = username;
-        this.timestamp = timestamp;
-        this.content = content;
+        setupValues(type, username, timestamp, null, content);
     }
 
     public CommandV2(CommandType type, String username, Long timestamp, FileInfo fileInfo, ByteBuffer[] content){
+        setupValues(type, username, timestamp, fileInfo, content);
+    }
+
+    private void setupValues(CommandType type, String username, Long timestamp, FileInfo fileInfo, ByteBuffer[] content) {
         this.type = type;
-        this.username = username;
-        this.timestamp = timestamp;
-        this.fileInfo = fileInfo;
-        this.content = content;
+
+        switch(type){
+            case FILE:
+                if(fileInfo == null)
+                    throw new IllegalArgumentException("for FILE command is needed a FileInfo");
+
+                this.fileInfo = fileInfo;
+            case TEXT:
+                if(username == null)
+                    throw new IllegalArgumentException(String.format("for %s command is needed an username", type.name()));
+
+                if(timestamp == null)
+                    throw new IllegalArgumentException(String.format("for %s command is needed a timestamp", type.name()));
+
+                this.username = username;
+                this.timestamp = timestamp;
+            case UUID:
+                if(content == null || content.length == 0)
+                    throw new IllegalArgumentException(String.format("for %s command is needed a content", type.name()));
+
+                boolean hasContent = true;
+                for(int i = 0; i < content.length; i++)
+                {
+                    hasContent = content[i] != null && content[i].capacity() > 0;
+
+                    if(!hasContent)
+                        throw new IllegalArgumentException(String.format("for %s command is needed a valid content", type.name()));    
+                }   
+                    
+                this.content = content;
+                break;
+            case CLOSE:
+            default:
+                break;
+        }
+        
     }
 
 	public static CommandV2 processesInputStream(InputStream inpStream) {
