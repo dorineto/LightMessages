@@ -2,14 +2,14 @@ package Client;
 
 import java.net.*;
 import java.io.*;
-import java.util.Base64;
 import java.util.Hashtable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import java.util.*;
 import java.nio.*;
 
 import Commons.*;
+import Commons.CommandV2.FileInfo;
 
 public class LightMessageSocket{
 	protected LightMessageUI ligthUI;
@@ -75,15 +75,9 @@ public class LightMessageSocket{
 			if(readInput.isRunning()){
 				OutputStream out = sock.getOutputStream();
 				
-				Command command = new Command();
+				CommandV2 command = new CommandV2(CommandV2.CommandTypeV2.CLOSE);
 
-				Hashtable<String, String> info = command.getInfoDict();
-
-				info.put("type", ((Integer)commandType.CLOSE.ordinal()).toString());
-
-				String serCommand = Base64.getEncoder().encodeToString(command.Serialize().getBytes("UTF-8"));
-
-				out.write(serCommand.getBytes("UTF-8"));
+				out.write(command.serialize());
 				out.flush();
 
 				readInput.stopRunning();
@@ -115,28 +109,22 @@ public class LightMessageSocket{
 	}
 	
 	// TODO: Make this method a thread that send messages on a queue asynchronously, to give a better response to the user
-	public String processesSending(String userName, String content, commandType type){
+	public String processesSending(String userName, String content, CommandV2.CommandTypeV2 type){
 		try{
 			if(readInput.isRunning() && !LightMessageSocket.tryConnection(sock)){
 				closeSocket();
 				return "\nNão foi possivel estabelecer uma conexão, tente novamente mais tarde!\n";
 			}
-			
-			Command commandSend =  new Command();
 
-			Hashtable<String, String> infoDic = commandSend.getInfoDict();
+			FileInfo fileInfo = null;
+			ByteBuffer[] contentChuncks = null;
 
-			infoDic.put("name", userName);
-			infoDic.put("datetime", LocalDateTime.now().toString());
-
-			Hashtable<String, String> contentDic = commandSend.getContentDict();
-
-			contentDic.put("type", ((Integer)type.ordinal()).toString());
-
-			if(type == commandType.TEXT){
-				contentDic.put("content", content);
+			if(type == CommandV2.CommandTypeV2.TEXT){
+				contentChuncks = new ByteBuffer[] {	
+					ByteBuffer.wrap(content.getBytes("UTF8"))
+				};
 			}
-			else if(type == commandType.FILE){
+			else if(type == CommandV2.CommandTypeV2.FILE){
 				File contentFile = new File(content);
 				
 				if(!contentFile.exists() || !contentFile.isFile())
@@ -146,8 +134,6 @@ public class LightMessageSocket{
 					return "Sem permissão para leitura desse arquivo!";
 
 				try{
-					String fileContent = "";
-
 					FileInputStream inputFile = new FileInputStream(contentFile);
 
 					ArrayList<byte[]> contentChunks = new ArrayList<>();
@@ -174,10 +160,12 @@ public class LightMessageSocket{
 					for(byte[] contentChunk : contentChunks)
 						finalBuffer.put(contentChunk);
 
-					fileContent += Base64.getEncoder().encodeToString(finalBuffer.array());
+					fileInfo = new FileInfo(contentFile.getName());
 
-					contentDic.put("content", fileContent);
-					contentDic.put("filename", contentFile.getName());
+					contentChuncks = new ByteBuffer[] {
+						finalBuffer
+					};
+
 				}
 				catch(Exception ex){
 					logger.writeLog(LogLevel.ERROR, "processesSending - "+ Logger.dumpException(ex));
@@ -189,13 +177,15 @@ public class LightMessageSocket{
 				return "Tipo de envio desconhecido!";
 			}
 
-			String serCommand = Base64.getEncoder().encodeToString(commandSend.Serialize().getBytes("UTF-8"));
+			long timestamp = Instant.now().toEpochMilli();
+
+			CommandV2 command = new CommandV2(type, userName, timestamp, fileInfo, contentChuncks);
 
 			OutputStream out = sock.getOutputStream();
-			out.write(serCommand.getBytes("UTF-8"));
+			out.write(command.serialize());
 			out.flush();
 			
-			logger.writeLog(LogLevel.DEBUG, "processesSending - Sended - type=" + type.ordinal());
+			logger.writeLog(LogLevel.DEBUG, "processesSending - Sended - type=" + type.name());
 		}
 		catch(Exception ex){
 			logger.writeLog(LogLevel.ERROR, "processesSending - " + Logger.dumpException(ex));

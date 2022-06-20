@@ -1,7 +1,9 @@
 package Server;
 
 import Commons.*;
+
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.io.*;
 
@@ -32,17 +34,14 @@ public class ServerSocketAccept extends ThreadSafeStop {
                     
                     logger.writeLog(LogLevel.DEBUG, "ServerSocketAccept - New Socket Accepted uuid=" + uuid);
 
-                    Command command = new Command();
-
-                    Hashtable<String,String> info = command.getInfoDict();
-
-                    info.put("type", ((Integer)commandType.UUID.ordinal()).toString());
-                    info.put("content", uuid);                  
-
-                    String serCommand = Base64.getEncoder().encodeToString(command.Serialize().getBytes("UTF-8"));
+                    ByteBuffer[] content = new ByteBuffer[] { 
+                        ByteBuffer.wrap(uuid.getBytes("UTF8"))
+                    };
+                    
+                    CommandV2 command = new CommandV2(CommandV2.CommandTypeV2.UUID,  content);
 
                     OutputStream out = sock.getOutputStream();
-                    out.write(serCommand.getBytes("UTF-8"));
+                    out.write(command.serialize());
                     out.flush();
 
                     SocketClient socketClient = new SocketClient(uuid, sock, sockets);

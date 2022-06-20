@@ -4,12 +4,11 @@ import java.nio.*;
 import java.io.*;
 import java.util.*;
 import java.util.stream.*;
+import java.time.LocalDateTime;
 
 public class TestCommons {
     public static void main(String[] args){
-        Long a = null;
-
-        System.out.println(String.format("null = %s", a));
+        System.out.println(String.format("datetime = %s", LocalDateTime.now().toString()));
     }
 
     /*

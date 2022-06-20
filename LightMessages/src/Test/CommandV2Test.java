@@ -5,7 +5,7 @@ import java.nio.*;
 import java.io.*;
 
 import Commons.CommandV2;
-import Commons.CommandV2.CommandType;
+import Commons.CommandV2.CommandTypeV2;
 import Commons.CommandV2.FileInfo;
 
 import static Test.TestMain.assertThis;
@@ -93,7 +93,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x61 // a
         };
 
-        expectedCommands.add(new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+        expectedCommands.add(new CommandV2(CommandV2.CommandTypeV2.TEXT, "a", 1645994122L, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         // UUID
         inputs.add(new byte[] {    
@@ -117,7 +117,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x35, (byte)0x34, (byte)0x37, (byte)0x31
         };
 
-        expectedCommands.add(new CommandV2(CommandV2.CommandType.UUID, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+        expectedCommands.add(new CommandV2(CommandV2.CommandTypeV2.UUID, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
         
         // CLOSE
         inputs.add(new byte[] {    
@@ -128,7 +128,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
-        expectedCommands.add(new CommandV2(CommandV2.CommandType.CLOSE));
+        expectedCommands.add(new CommandV2(CommandV2.CommandTypeV2.CLOSE));
 
         // FILE
         inputs.add(new byte[] {    
@@ -152,7 +152,7 @@ public class CommandV2Test implements TestSwitch {
 
         CommandV2.FileInfo expectedFileInfo = new CommandV2.FileInfo("a.txt");
 
-        expectedCommands.add(new CommandV2(CommandV2.CommandType.FILE, "a", 1645994122L, expectedFileInfo, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+        expectedCommands.add(new CommandV2(CommandV2.CommandTypeV2.FILE, "a", 1645994122L, expectedFileInfo, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         // when
         CommandV2 command = null;
@@ -347,7 +347,7 @@ public class CommandV2Test implements TestSwitch {
         // TEXT tests
         String testCaseDescriprion = "Text command without username";
         try {
-            auxCommand = new CommandV2(CommandType.TEXT, null, 1645994122l, null, content);
+            auxCommand = new CommandV2(CommandTypeV2.TEXT, null, 1645994122l, null, content);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -355,7 +355,7 @@ public class CommandV2Test implements TestSwitch {
 
         testCaseDescriprion = "Text command without timestamp";
         try {
-            auxCommand = new CommandV2(CommandType.TEXT, "a", null, null, content);
+            auxCommand = new CommandV2(CommandTypeV2.TEXT, "a", null, null, content);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -363,7 +363,7 @@ public class CommandV2Test implements TestSwitch {
 
         testCaseDescriprion = "Text command without content";
         try {
-            auxCommand = new CommandV2(CommandType.TEXT, "a", 1645994122l, null, null);
+            auxCommand = new CommandV2(CommandTypeV2.TEXT, "a", 1645994122l, null, null);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -373,7 +373,7 @@ public class CommandV2Test implements TestSwitch {
         // UUID tests
         testCaseDescriprion = "UUID command without content";
         try {
-            auxCommand = new CommandV2(CommandType.UUID, null, null, null, null);
+            auxCommand = new CommandV2(CommandTypeV2.UUID, null, null, null, null);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -385,7 +385,7 @@ public class CommandV2Test implements TestSwitch {
 
         testCaseDescriprion = "File command without username";
         try {
-            auxCommand = new CommandV2(CommandType.FILE, null, 1645994122l, fileInfo, content);
+            auxCommand = new CommandV2(CommandTypeV2.FILE, null, 1645994122l, fileInfo, content);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -393,7 +393,7 @@ public class CommandV2Test implements TestSwitch {
 
         testCaseDescriprion = "File command without timestamp";
         try {
-            auxCommand = new CommandV2(CommandType.FILE, "a", null, fileInfo, content);
+            auxCommand = new CommandV2(CommandTypeV2.FILE, "a", null, fileInfo, content);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -401,7 +401,7 @@ public class CommandV2Test implements TestSwitch {
 
         testCaseDescriprion = "File command without file info";
         try {
-            auxCommand = new CommandV2(CommandType.FILE, "a", 1645994122l, null, content);
+            auxCommand = new CommandV2(CommandTypeV2.FILE, "a", 1645994122l, null, content);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -409,7 +409,7 @@ public class CommandV2Test implements TestSwitch {
 
         testCaseDescriprion = "File command without content";
         try {
-            auxCommand = new CommandV2(CommandType.FILE, "a", 1645994122l, fileInfo, null);
+            auxCommand = new CommandV2(CommandTypeV2.FILE, "a", 1645994122l, fileInfo, null);
         }
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
@@ -428,7 +428,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x61 // a
         };
 
-        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.TEXT, "a", 1645994122L, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandTypeV2.TEXT, "a", 1645994122L, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         expectedOutputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
@@ -453,7 +453,7 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x35, (byte)0x34, (byte)0x37, (byte)0x31
         };
 
-        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.UUID, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandTypeV2.UUID, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         expectedOutputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
@@ -469,7 +469,7 @@ public class CommandV2Test implements TestSwitch {
         });
 
         // CLOSE
-        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.CLOSE));
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandTypeV2.CLOSE));
 
         expectedOutputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]
@@ -486,7 +486,7 @@ public class CommandV2Test implements TestSwitch {
 
         CommandV2.FileInfo expectedFileInfo = new CommandV2.FileInfo("a.txt");
 
-        commandsToSerialize.add(new CommandV2(CommandV2.CommandType.FILE, "a", 1645994122L, expectedFileInfo, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandTypeV2.FILE, "a", 1645994122L, expectedFileInfo, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
         expectedOutputs.add(new byte[] {    
             (byte)0xf7, (byte)0xf3,                                                                         // [INI]

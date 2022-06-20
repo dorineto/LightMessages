@@ -51,21 +51,30 @@ public class ProcessRequest extends ThreadSafeStop {
                     InputStream inpStream = socket.getInputStream();
                     if (inpStream.available() > 0) 
                     {
+                        int availableBytesRead = inpStream.available();
 
-                        Command command = Command.ProcessesInputStream(inpStream, true);
+                        CommandV2 command;
+                        try
+                        {
+                            command = CommandV2.processesInputStream(inpStream);
+                        }
+                        catch(IllegalArgumentException ex){
+                            logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command - " + ex.getMessage());
+                            inpStream.skip(availableBytesRead);
+                            continue;
+                        }
 
-                        String errorMessage = Command.ValidadeCommand(command);
-
-                        if(errorMessage != null && !errorMessage.trim().equals("")){
-                            logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command - " + errorMessage);
+                        if(command == null){
+                            logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Invalid command");
+                            inpStream.skip(availableBytesRead);
                             continue;
                         }
 
                         logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " -  Processing Command");
 
-                        int type = Integer.parseInt(command.getContentDict().get("type"));
+                        CommandV2.CommandTypeV2 type = command.getType();
 
-                        if (type == commandType.CLOSE.ordinal()) 
+                        if (type == CommandV2.CommandTypeV2.CLOSE) 
                         {
                             logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Closing Socket");
                             socket.close();
@@ -85,6 +94,8 @@ public class ProcessRequest extends ThreadSafeStop {
                             Socket otherSocketAux = null;
                             
                             Enumeration<String> otherSocketsKeys = sockets.keys();
+
+                            byte[] serializedCommand = command.serialize();
 
                             while (otherSocketsKeys.hasMoreElements()) 
                             {
@@ -107,7 +118,7 @@ public class ProcessRequest extends ThreadSafeStop {
 
                                         synchronized (outAux)
                                         {
-                                            outAux.write(command.getBytes());
+                                            outAux.write(serializedCommand);
                                             outAux.flush();
                                         }
                                         
@@ -124,6 +135,14 @@ public class ProcessRequest extends ThreadSafeStop {
                                     
                             }
                         }
+
+                        if(!socket.isClosed())
+                        {
+                            availableBytesRead = inpStream.available();
+                            if(availableBytesRead > 0)
+                                inpStream.skip(availableBytesRead);
+                        }
+
                     }
                 } 
                 catch (Exception ex) 

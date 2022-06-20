@@ -210,7 +210,7 @@ class LightMessageUI extends JFrame{
 		System.exit(1);
 	}
 	
-	public void createNewMessage(String useName, LocalDateTime datetime, String content, MessageDirection direction, commandType contentType){
+	public void createNewMessage(String useName, LocalDateTime datetime, String content, MessageDirection direction, CommandV2.CommandTypeV2 contentType){
 		JPanel newMessage = new JPanel();
 		
 		newMessage.setLayout(new BoxLayout(newMessage, BoxLayout.Y_AXIS));
@@ -232,7 +232,7 @@ class LightMessageUI extends JFrame{
 		}
 		
 		String labelContent = content;
-		if(contentType == commandType.FILE){
+		if(contentType == CommandV2.CommandTypeV2.FILE){
 			File file = new File(content);
 			labelContent = (direction == MessageDirection.SENDING ? "Enviado" : "Recebido") + " - " + file.getName();
 		}
@@ -320,7 +320,7 @@ class LightMessageUI extends JFrame{
 			
 			LocalDateTime datetime = LocalDateTime.now();
 			
-			commandType type = fileSelected? commandType.FILE : commandType.TEXT;
+			CommandV2.CommandTypeV2 type = fileSelected? CommandV2.CommandTypeV2.FILE : CommandV2.CommandTypeV2.TEXT;
 			
 			container.createNewMessage("", datetime, input, MessageDirection.SENDING, type);
 			
