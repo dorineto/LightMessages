@@ -4,7 +4,7 @@ import java.nio.*;
 import java.io.*;
 import java.util.*;
 
-public class CommandV2 {
+public class CommandV2 implements ICommand{
     private CommandTypeV2 type;
     private String username = null;
     private Long timestamp  = null;
@@ -47,6 +47,7 @@ public class CommandV2 {
 
                 this.username = username;
                 this.timestamp = timestamp;
+            case ACK:
             case UUID:
                 if(content == null || content.length == 0)
                     throw new IllegalArgumentException(String.format("for %s command is needed a content", type.name()));
@@ -113,6 +114,9 @@ public class CommandV2 {
                         break;
                     case (byte)0x03:
                         type = CommandTypeV2.FILE;
+                        break;
+                    case (byte)0x04:
+                        type = CommandTypeV2.ACK;
                         break;
                     case (byte)0xFF:
                     default:
@@ -398,6 +402,7 @@ public class CommandV2 {
         UUID((byte)0x01)
         ,TEXT((byte)0x02)
         ,FILE((byte)0x03)
+        ,ACK((byte)0x04)
         ,CLOSE((byte)0xFF);
     
         private final byte type;

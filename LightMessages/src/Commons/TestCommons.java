@@ -5,11 +5,44 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.*;
 import java.time.LocalDateTime;
+import java.security.*;
 
 public class TestCommons {
     public static void main(String[] args){
-        System.out.println(String.format("datetime = %s", LocalDateTime.now().toString()));
+        byte[] input = new byte[] {    
+            (byte)0xf7, (byte)0xf3,                                                                         // [INI]
+            (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x18,                         // HS      = 24
+            (byte)0x54, (byte)0x02,                                                                         // T       = TEXT (0x02) (2  B)
+            (byte)0x55, (byte)0x53, (byte)0x00, (byte)0x01,                                                 // US      = 1           (4  B)
+            (byte)0x55, (byte)0x61,                                                                         // U       = a           (2  B)
+            (byte)0x54, (byte)0x50, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x62, (byte)0x1b, // TP      = 1645994122  (10 B)
+            (byte)0xe0, (byte)0x8a, 
+            (byte)0x43, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x01,                         // CS      = 1           (6  B)
+            (byte)0x61,                                                                                     // Content = a           (1  B)
+            (byte)0xf3, (byte)0xf7                                                                          // [FIM]
+        };
+
+        String hexOutput = "";
+
+        try{
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+
+            hexOutput = byteArrayToHex(md.digest(input)).toLowerCase();
+        }
+        catch(Exception ex) {}
+        
+        System.out.println(String.format("hex = %s", hexOutput));
     }
+
+    public static String byteArrayToHex(byte[] a) {
+        String wholeHexString = DatatypeConverter.printHexBinary(a).toUpperCase();
+
+        StringBuilder sb = new StringBuilder();
+        for(int i = 0; i < Math.ceil(wholeHexString.length() / 2); i++)
+            sb.append(String.format("%c%c ", wholeHexString.charAt(i * 2), wholeHexString.charAt(i * 2 + 1)));
+
+        return sb.toString();
+     }
 
     /*
     public static void main(String[] args){

@@ -154,6 +154,29 @@ public class CommandV2Test implements TestSwitch {
 
         expectedCommands.add(new CommandV2(CommandV2.CommandTypeV2.FILE, "a", 1645994122L, expectedFileInfo, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
 
+        // ACK
+        inputs.add(new byte[] {    
+            (byte)0xf7, (byte)0xf3,                                                                         // [INI]
+            (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x08,                         // HS      = 8 
+            (byte)0x54, (byte)0x04,                                                                         // T       = ACK (0x04)                           (2  B)
+            (byte)0x43, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x20,                         // CS      = 32                                   (6  B)
+            (byte)0x0c, (byte)0x47, (byte)0x27, (byte)0xa9, (byte)0xdf, (byte)0x6e, (byte)0x7e, (byte)0x53, // Content = 0c4727a9df6e7e538c500cd4ee746e294ae6622a58f63480ec7f4d23e7bd3463 (34 B)
+            (byte)0x8c, (byte)0x50, (byte)0x0c, (byte)0xd4, (byte)0xee, (byte)0x74, (byte)0x6e, (byte)0x29, 
+            (byte)0x4a, (byte)0xe6, (byte)0x62, (byte)0x2a, (byte)0x58, (byte)0xf6, (byte)0x34, (byte)0x80, 
+            (byte)0xec, (byte)0x7f, (byte)0x4d, (byte)0x23, (byte)0xe7, (byte)0xbd, (byte)0x34, (byte)0x63,                                               
+            (byte)0xf3, (byte)0xf7                                                                          // [FIM]
+        });
+
+        expectedContent = new byte[] {
+            (byte)0x0c, (byte)0x47, (byte)0x27, (byte)0xa9, (byte)0xdf, (byte)0x6e, (byte)0x7e, (byte)0x53, // Content = 0c4727a9df6e7e538c500cd4ee746e294ae6622a58f63480ec7f4d23e7bd3463 (34 B)
+            (byte)0x8c, (byte)0x50, (byte)0x0c, (byte)0xd4, (byte)0xee, (byte)0x74, (byte)0x6e, (byte)0x29, 
+            (byte)0x4a, (byte)0xe6, (byte)0x62, (byte)0x2a, (byte)0x58, (byte)0xf6, (byte)0x34, (byte)0x80, 
+            (byte)0xec, (byte)0x7f, (byte)0x4d, (byte)0x23, (byte)0xe7, (byte)0xbd, (byte)0x34, (byte)0x63
+        };
+
+        expectedCommands.add(new CommandV2(CommandV2.CommandTypeV2.ACK, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+
+
         // when
         CommandV2 command = null;
         CommandV2 expectedCommand = null;
@@ -414,6 +437,15 @@ public class CommandV2Test implements TestSwitch {
         catch(IllegalArgumentException ex){ auxCommand = null; }
 
         assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
+
+        // ACK tests
+        testCaseDescriprion = "ACK command without content";
+        try {
+            auxCommand = new CommandV2(CommandTypeV2.ACK, null, null, null, null);
+        }
+        catch(IllegalArgumentException ex){ auxCommand = null; }
+
+        assertThis(auxCommand == null, String.format("For test [%s] wasn't throw an IllegalArgumentException", testCaseDescriprion));
     }
 
     public void itShouldSerializeCommands()
@@ -503,6 +535,27 @@ public class CommandV2Test implements TestSwitch {
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 
+        // ACK
+        expectedContent = new byte[] {
+            (byte)0x0c, (byte)0x47, (byte)0x27, (byte)0xa9, (byte)0xdf, (byte)0x6e, (byte)0x7e, (byte)0x53, // Content = 0c4727a9df6e7e538c500cd4ee746e294ae6622a58f63480ec7f4d23e7bd3463 (34 B)
+            (byte)0x8c, (byte)0x50, (byte)0x0c, (byte)0xd4, (byte)0xee, (byte)0x74, (byte)0x6e, (byte)0x29, 
+            (byte)0x4a, (byte)0xe6, (byte)0x62, (byte)0x2a, (byte)0x58, (byte)0xf6, (byte)0x34, (byte)0x80, 
+            (byte)0xec, (byte)0x7f, (byte)0x4d, (byte)0x23, (byte)0xe7, (byte)0xbd, (byte)0x34, (byte)0x63
+        };
+
+        commandsToSerialize.add(new CommandV2(CommandV2.CommandTypeV2.ACK, new ByteBuffer[] { ByteBuffer.wrap(expectedContent) }));
+
+        expectedOutputs.add(new byte[] {    
+            (byte)0xf7, (byte)0xf3,                                                                         // [INI]
+            (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x08,                         // HS      = 8 
+            (byte)0x54, (byte)0x04,                                                                         // T       = ACK (0x04)                           (2  B)
+            (byte)0x43, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x20,                         // CS      = 32                                   (6  B)
+            (byte)0x0c, (byte)0x47, (byte)0x27, (byte)0xa9, (byte)0xdf, (byte)0x6e, (byte)0x7e, (byte)0x53, // Content = 0c4727a9df6e7e538c500cd4ee746e294ae6622a58f63480ec7f4d23e7bd3463 (34 B)
+            (byte)0x8c, (byte)0x50, (byte)0x0c, (byte)0xd4, (byte)0xee, (byte)0x74, (byte)0x6e, (byte)0x29, 
+            (byte)0x4a, (byte)0xe6, (byte)0x62, (byte)0x2a, (byte)0x58, (byte)0xf6, (byte)0x34, (byte)0x80, 
+            (byte)0xec, (byte)0x7f, (byte)0x4d, (byte)0x23, (byte)0xe7, (byte)0xbd, (byte)0x34, (byte)0x63,                                               
+            (byte)0xf3, (byte)0xf7                                                                          // [FIM]
+        });
 
         byte[] serizalizedCommand;
         byte[] expectedOutput;
@@ -580,6 +633,19 @@ public class CommandV2Test implements TestSwitch {
             (byte)0x46, (byte)0x61, (byte)0x2e, (byte)0x74, (byte)0x78, (byte)0x74,                         // F       = a.txt       (6  B)
             (byte)0x43, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x01,                         // CS      = 1           (6  B)
             (byte)0x61,                                                                                     // Content = a           (1  B)
+            (byte)0xf3, (byte)0xf7                                                                          // [FIM]
+        });
+
+        testCasesLabel.add("ACK");
+        inputs.add(new byte[] {    
+            (byte)0xf7, (byte)0xf3,                                                                         // [INI]
+            (byte)0x48, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x08,                         // HS      = 8 
+            (byte)0x54, (byte)0x04,                                                                         // T       = ACK (0x04)                           (2  B)
+            (byte)0x43, (byte)0x53, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x20,                         // CS      = 32                                   (6  B)
+            (byte)0x0c, (byte)0x47, (byte)0x27, (byte)0xa9, (byte)0xdf, (byte)0x6e, (byte)0x7e, (byte)0x53, // Content = 0c4727a9df6e7e538c500cd4ee746e294ae6622a58f63480ec7f4d23e7bd3463 (34 B)
+            (byte)0x8c, (byte)0x50, (byte)0x0c, (byte)0xd4, (byte)0xee, (byte)0x74, (byte)0x6e, (byte)0x29, 
+            (byte)0x4a, (byte)0xe6, (byte)0x62, (byte)0x2a, (byte)0x58, (byte)0xf6, (byte)0x34, (byte)0x80, 
+            (byte)0xec, (byte)0x7f, (byte)0x4d, (byte)0x23, (byte)0xe7, (byte)0xbd, (byte)0x34, (byte)0x63,                                               
             (byte)0xf3, (byte)0xf7                                                                          // [FIM]
         });
 

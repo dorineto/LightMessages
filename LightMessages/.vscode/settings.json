@@ -1,4 +1,6 @@
 {
     "java.project.sourcePaths": ["src"],
-    "java.project.outputPath": "bin"
+    "java.project.outputPath": "bin",
+    "java.project.encoding": "setDefault",
+    "java.autobuild.enabled": true
 }

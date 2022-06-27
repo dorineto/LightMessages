@@ -7,30 +7,29 @@ import java.util.*;
 import Commons.*;
 
 public class ProcessRequest extends ThreadSafeStop {
-    private String socketUUID;
-    private Socket socket;
+    private SocketClient socketCliente;
 
-    private Hashtable<String, SocketClient> sockets;
     private Logger logger;
 
-    public ProcessRequest(String socketUUID, Socket socket, Hashtable<String, SocketClient> sockets){
-        super("ProcessRequest - " + socketUUID);
+    public ProcessRequest(SocketClient socket){
+        super("ProcessRequest - " + socket.getSocketUUID());
 
-        this.socketUUID = socketUUID;
-        this.socket = socket;
-
-        this.sockets = sockets;
+        this.socketCliente = socket;
         
         this.logger = Logger.getLogger();
     }
 
     @Override
     public void run() {
+        String socketUUID = this.socketCliente.getSocketUUID();
+
         try 
         {
             
             logger.writeLog(LogLevel.INFO, "ProcessRequest - UUID=" + socketUUID + " - Start thread");
             this.running = true;
+
+            Socket socket = this.socketCliente.getSocket();
 
             while (!this.stopRunning) 
             {
@@ -39,9 +38,7 @@ public class ProcessRequest extends ThreadSafeStop {
 
                     if (socket.isClosed() || !socket.isConnected()) 
                     {
-                        synchronized(sockets){
-                            sockets.remove(socketUUID);
-                        }
+                        this.socketCliente.exitSocketGroup();
 
                         logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - socket disconnected");
                         this.stopRunning = true;
@@ -79,23 +76,31 @@ public class ProcessRequest extends ThreadSafeStop {
                             logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - Closing Socket");
                             socket.close();
 
-                            synchronized(sockets){
-                                sockets.remove(socketUUID);
-                            }
+                            socketCliente.exitSocketGroup();
 
                             this.stopRunning = true;
-                        } 
+                        }
+                        else if (type == CommandV2.CommandTypeV2.ACK) {
+                            byte[] sendedChecksum = command.getContent()[0].array();
+
+                            boolean markedSend = socketCliente.markAsSendCommand(sendedChecksum);
+
+                            String logMessage = "Acknowledged command";
+
+                            if(!markedSend)
+                                logMessage = "Not acknowledged command - checksum don't match";
+
+                            logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID=" + socketUUID + " - " + logMessage);
+                        }
                         else 
                         {
 
-                            OutputStream outAux = null;
-
                             String otherSocketKey = null;
-                            Socket otherSocketAux = null;
+                            SocketClient otherSocketAux = null;
                             
-                            Enumeration<String> otherSocketsKeys = sockets.keys();
+                            Enumeration<String> otherSocketsKeys = this.socketCliente.getSocketGroup().keys();
 
-                            byte[] serializedCommand = command.serialize();
+                            Hashtable<String, SocketClient> sockets = this.socketCliente.getSocketGroup();
 
                             while (otherSocketsKeys.hasMoreElements()) 
                             {
@@ -105,28 +110,18 @@ public class ProcessRequest extends ThreadSafeStop {
                                 if (sockets.get(otherSocketKey) == null)
                                     continue;
                                 
-                                otherSocketAux = sockets.get(otherSocketKey).getSocket();
+                                otherSocketAux = sockets.get(otherSocketKey);
 
                                 try 
                                 {
-                                    if (!otherSocketKey.equalsIgnoreCase(socketUUID) && (!otherSocketAux.isClosed() && otherSocketAux.isConnected())) 
+                                    if (!otherSocketKey.equalsIgnoreCase(socketUUID) && (!otherSocketAux.getSocket().isClosed() && otherSocketAux.getSocket().isConnected())) 
                                     {
 
                                         logger.writeLog(LogLevel.DEBUG, "ProcessRequest - UUID= "+ socketUUID + " - Sending UUID=" + otherSocketKey + ",type=" + type);
                                         
-                                        outAux = otherSocketAux.getOutputStream();
-
-                                        synchronized (outAux)
-                                        {
-                                            outAux.write(serializedCommand);
-                                            outAux.flush();
-                                        }
+                                        otherSocketAux.sendCommand(command);
                                         
                                     }
-                                } 
-                                catch (IOException ex) 
-                                {
-                                    logger.writeLog(LogLevel.ERROR,"ProcessRequest - UUID= "+ socketUUID + " - Skiping Socket");
                                 } 
                                 catch (Exception ex)
                                 {

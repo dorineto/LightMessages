@@ -2,18 +2,12 @@
 
 TO-DO:
 
-- Melhorar o protocolo de troca de mensagens, esse novo protocolo será codificado em bytes para melhor otimização de banda
-
-- Melhorar o envio no cliente, transformando o metodo em uma thread que vai pegar as mensagens para enviar de uma queue
-
 - Melhorar no envio da mensagem so SocketServer, para quando for enviar uma mensagem para um socket invés de enviar 
   direto colocar em uma queue e um thread no SocketClient vai realizar os envios, assim liberando a thread de envio
   e diminuindo um possivel congestionamento de mensagens quando tiver multiplos sockets conectados
 
 - Melhorar o envio de arquivos, para mandar em pedaços comprimidos o conteúdo do arquivo e ter como checar a integridade de um arquivo
   via Sha256 para poder solicitar o reenvio desse arquivo, assim melhorando o envio de arquivos grandes
-
-- Testar se emojis funcionam
 
 - Ajustar o espaçamento das mensagens na GUI
 

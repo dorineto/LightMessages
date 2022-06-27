@@ -7,6 +7,7 @@ import java.time.Instant;
 
 import java.util.*;
 import java.nio.*;
+import javax.xml.bind.DatatypeConverter;
 
 import Commons.*;
 import Commons.CommandV2.FileInfo;
@@ -19,6 +20,9 @@ public class LightMessageSocket{
 	protected Logger logger;
 
 	private ReadInput readInput;
+	private ProcessSend processSend;
+
+	private String uniqueID;
 	
 	protected static InetSocketAddress connectionAddress = null;
 	protected static Hashtable<String, String> config;
@@ -53,8 +57,11 @@ public class LightMessageSocket{
 			if(!LightMessageSocket.tryConnection(sock))
 				throw new Exception("\nSocket Setup - Não foi possivel estabelecer uma conexão, tente novamente mais tarde!\n");
 			
-			readInput = new ReadInput(sock, ligthUI);
+			readInput = new ReadInput(this);
 			readInput.start();
+
+			processSend = new ProcessSend(this);
+			processSend.start();
 
 		}
 		catch(Exception ex){
@@ -82,6 +89,15 @@ public class LightMessageSocket{
 
 				readInput.stopRunning();
 				while(readInput.isRunning())
+				{
+					try
+					{
+						Thread.sleep(2000);
+					}catch(Exception ex) {}
+				}
+
+				processSend.stopRunning();
+				while(processSend.isRunning())
 				{
 					try
 					{
@@ -181,9 +197,11 @@ public class LightMessageSocket{
 
 			CommandV2 command = new CommandV2(type, userName, timestamp, fileInfo, contentChuncks);
 
-			OutputStream out = sock.getOutputStream();
-			out.write(command.serialize());
-			out.flush();
+			this.processSend.enqueueCommandToSend(command);
+
+			// OutputStream out = sock.getOutputStream();
+			// out.write(command.serialize());
+			// out.flush();
 			
 			logger.writeLog(LogLevel.DEBUG, "processesSending - Sended - type=" + type.name());
 		}
@@ -194,6 +212,45 @@ public class LightMessageSocket{
 		
 		return "";
 	}
+
+	public String processesSending(String userName, ByteBuffer[] content, CommandV2.CommandTypeV2 type){
+		try{
+			if(readInput.isRunning() && !LightMessageSocket.tryConnection(sock)){
+				closeSocket();
+				return "\nNão foi possivel estabelecer uma conexão, tente novamente mais tarde!\n";
+			}
+
+			FileInfo fileInfo = null;
+			ByteBuffer[] contentChuncks = null;
+			Long timestamp = null;
+
+			if(type == CommandV2.CommandTypeV2.ACK){
+				contentChuncks = content;
+			}
+			else{
+				return "Tipo de envio desconhecido!";
+			}			
+
+			CommandV2 command = new CommandV2(type, userName, timestamp, fileInfo, contentChuncks);
+
+			this.processSend.enqueueCommandToSend(command);
+			
+			logger.writeLog(LogLevel.DEBUG, "processesSending - Sended - type=" + type.name());
+		}
+		catch(Exception ex){
+			logger.writeLog(LogLevel.ERROR, "processesSending - " + Logger.dumpException(ex));
+			return ex.getMessage();
+		}
+
+		return "";
+	}
+
+
+	protected Socket getSocket() { return this.sock;}
+	protected LightMessageUI getLigthUI() { return this.ligthUI; }
+	
+	protected String getUniqueID() { return this.uniqueID; }
+	protected void setUniqueID(String uniqueID) { this.uniqueID = uniqueID; }
 
 	public static InetSocketAddress getConnectionAddress() { return connectionAddress; }
 	public static Hashtable<String, String> getConfig () { return config; }
