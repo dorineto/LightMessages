@@ -1,0 +1,5 @@
+
+INFO - 10/07/2022 18:46:50.356: SocketReadInput - Start
+INFO - 10/07/2022 18:46:50.356: SocketProcessSend - Start
+DEBUG - 10/07/2022 18:46:50.371: SocketReadInput - processing command - type = UUID
+DEBUG - 10/07/2022 18:46:50.378: SocketReadInput - Recived UUID uuid=28d10419-6b8a-376e-8692-4ea63176dce2

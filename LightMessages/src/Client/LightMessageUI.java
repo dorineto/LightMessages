@@ -1,6 +1,8 @@
 package Client;
 
 import java.awt.*;
+
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.event.*;
 import java.time.*;
@@ -8,10 +10,11 @@ import java.time.format.*;
 import java.io.*;
 
 import Commons.*;
+import Commons.CommandV2.CommandTypeV2;
 
 // TODO: See the memory leak
 class LightMessageUI extends JFrame{
-	public enum UIState{
+	public static enum UIState{
 		LOGIN,
 		CHAT
 	}
@@ -27,18 +30,36 @@ class LightMessageUI extends JFrame{
 	private JPanel jpLogoutPanel;
 	
 	private JPanel jpMessagesPanel;
+	private GridBagConstraints gbcMessagesPanel;
+
+	private GridBagConstraints dgcNewMessage;
+	private GridBagConstraints dgcNewMessageContents;
+
 	private JScrollPane jspMessagesPanel;
 	
 	private JPanel jpControlsPanel;
 	protected JTextArea jtaMessageBar;
 	protected JButton jbtFileButton;
+
+	protected JButton jbtSendButton;
+	protected JButton jbtLoginButton;
 	
 	protected String userName;
 	
 	protected LightMessageSocket socket;
+
+	//private final String imgPath = "../../img/";
+	private final String imgPath = "../img/";
+	//private final String imgPath = "./img/";
+
+	private ImageIcon logOutIcon;
+	private ImageIcon btnFileIcon;
+	private ImageIcon sendIcon;
+	private ImageIcon logoIcon;
+	private ImageIcon logoImgIcon;
 	
 	public static void main(String[] args){
-		new LightMessageUI("LightMassage", 500, 500);
+		new LightMessageUI("LightMessage", 500, 500);
 	}
 	
 	public LightMessageUI(String name, int width, int height){
@@ -48,6 +69,7 @@ class LightMessageUI extends JFrame{
 		
 		this.setSize(width, height);
 		this.setResizable(false);
+		this.setLocationRelativeTo(null);
 		
 		this.socket = new LightMessageSocket(this);
 		
@@ -67,39 +89,62 @@ class LightMessageUI extends JFrame{
 		this.setupUI(width, height);
 		
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-		
-		
 		this.setVisible(true);
 	}
 	
 	public void setupUI(int width, int height){
+		try{
+			this.logOutIcon = new ImageIcon(ImageIO.read(new File(imgPath + "logOut_25_25.png")), "Logout");
+			this.btnFileIcon = new ImageIcon(ImageIO.read(new File(imgPath + "fileIcon_50_50.png")), "Arquivo");
+			this.sendIcon = new ImageIcon(ImageIO.read(new File(imgPath + "sendIcon_50_50.png")), "Enviar");
+			this.logoIcon = new ImageIcon(ImageIO.read(new File(imgPath + "logoIcon.png")), "Logo");
+			this.logoImgIcon = new ImageIcon(ImageIO.read(new File(imgPath + "logoImg.png")), "Logo");
+		}
+		catch(IOException ex) {}
+
+		if(logoIcon != null)
+			this.setIconImage(logoIcon.getImage());
+
 		this.jpCenterPanel = new JPanel();
 		this.jpCenterPanel.setLayout(new BoxLayout(this.jpCenterPanel, BoxLayout.X_AXIS));
 		
 		// Start Setting Login Panel
 		this.jpLoginPanel = new JPanel();
-		this.jpLoginPanel.setLayout(new BoxLayout(this.jpLoginPanel, BoxLayout.Y_AXIS));
+
+		this.jpLoginPanel.setLayout(new GridBagLayout());
+
+		GridBagConstraints gbcjpLoginPanel = new GridBagConstraints();
+		gbcjpLoginPanel.gridx = 0;
+		gbcjpLoginPanel.gridy = 0;
+		gbcjpLoginPanel.weightx = 1.0;
+
+		gbcjpLoginPanel.insets = new Insets(0,0,(int)Math.ceil(this.getHeight() * .1),0);
+
+
+		JLabel jlAux;
+		if(logoImgIcon != null){
+			jlAux = new JLabel(logoImgIcon, JLabel.CENTER);
+			jlAux.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+		}
+		else{
+			jlAux = new JLabel(this.titleName, JLabel.CENTER);
+			jlAux.setFont(Font.decode("Arial-BOLD-25"));
+		}
 		
-		this.jpLoginPanel.add(Box.createVerticalGlue());
+		this.jpLoginPanel.add(jlAux, gbcjpLoginPanel);
+		gbcjpLoginPanel.gridy += 1;
 		
-		JLabel jlAux = new JLabel(this.titleName, JLabel.CENTER);
-		jlAux.setFont(Font.decode("Arial-BOLD-25"));
+		gbcjpLoginPanel.insets.set(0, 0, 15, 0);
+
+		jlAux = new JLabel("Usuário:", JLabel.CENTER);
+		jlAux.setFont(Font.decode("Arial-PLAIN-16"));
 		
-		jlAux.setAlignmentX(Component.CENTER_ALIGNMENT);
-		jlAux.setAlignmentY(Component.CENTER_ALIGNMENT);
-		
-		this.jpLoginPanel.add(jlAux);
-		
-		jlAux = new JLabel("Nome do usuário:", JLabel.CENTER);
-		jlAux.setFont(Font.decode("Arial-PLAIN-15"));
-		
-		jlAux.setAlignmentX(Component.CENTER_ALIGNMENT);
-		jlAux.setAlignmentY(Component.CENTER_ALIGNMENT);
-		
-		this.jpLoginPanel.add(jlAux);
+		this.jpLoginPanel.add(jlAux, gbcjpLoginPanel);
+		gbcjpLoginPanel.gridy += 1;
 		
 		this.jtfUserName = new JTextField(100);
+		jtfUserName.setFont(Font.decode("Arial-PLAIN-16"));
+		jtfUserName.addKeyListener(new userNameKey(this));
 		
 		Dimension dim = new Dimension(400,40);
 		
@@ -107,21 +152,16 @@ class LightMessageUI extends JFrame{
 		this.jtfUserName.setMaximumSize(dim);
 		this.jtfUserName.setMinimumSize(dim);
 		
-		this.jtfUserName.setAlignmentX(Component.CENTER_ALIGNMENT);
-		this.jtfUserName.setAlignmentY(Component.CENTER_ALIGNMENT);
+		this.jpLoginPanel.add(this.jtfUserName, gbcjpLoginPanel);
+		gbcjpLoginPanel.gridy += 1;
 		
-		this.jpLoginPanel.add(this.jtfUserName);
+		this.jbtLoginButton = new JButton("Login");
+		this.jbtLoginButton.setFont(Font.decode("Arial-PLAIN-17"));
+		this.jbtLoginButton.addActionListener(new loginBtnClick(this));
+		this.jbtLoginButton.setMinimumSize(new Dimension(100, 40));
 		
-		JButton jbAux = new JButton("Entrar");
-		jbAux.setFont(Font.decode("Arial-PLAIN-15"));
-		jbAux.addActionListener(new loginBtnClick(this));
-		
-		jbAux.setAlignmentX(Component.CENTER_ALIGNMENT);
-		jbAux.setAlignmentY(Component.CENTER_ALIGNMENT);
-		
-		this.jpLoginPanel.add(jbAux);
-		
-		this.jpLoginPanel.add(Box.createVerticalGlue());
+		this.jpLoginPanel.add(jbtLoginButton, gbcjpLoginPanel);
+		gbcjpLoginPanel.gridy += 1;
 		
 		this.jpCenterPanel.add(this.jpLoginPanel, BorderLayout.CENTER);
 		
@@ -130,8 +170,18 @@ class LightMessageUI extends JFrame{
 		// Start Setting Logout Panel
 		
 		this.jpLogoutPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		
-		jbAux = new JButton("Logout");
+
+		JButton jbAux;
+
+		if(logOutIcon != null){
+			jbAux = new JButton(logOutIcon);
+			jbAux.setPreferredSize(new Dimension(35, 35));
+		}
+		else
+			jbAux = new JButton("Logout");
+
+		jbAux.setToolTipText("Logout");
+
 		jbAux.setFont(Font.decode("Arial-PLAIN-15"));
 		jbAux.addActionListener(new logoutBtnClick(this));
 		
@@ -145,36 +195,77 @@ class LightMessageUI extends JFrame{
 		// Start Setting Messages Panel
 		
 		this.jpMessagesPanel = new JPanel();
-		this.jpMessagesPanel.setLayout(new BoxLayout(jpMessagesPanel, BoxLayout.Y_AXIS));
+		this.jpMessagesPanel.setLayout(new GridBagLayout());
+		
+		this.gbcMessagesPanel = new GridBagConstraints();
+		this.gbcMessagesPanel.fill = GridBagConstraints.HORIZONTAL;
+		this.gbcMessagesPanel.gridx = 0;
+		this.gbcMessagesPanel.gridy = 0;
+
+		this.gbcMessagesPanel.weightx = 1.0;
+		this.gbcMessagesPanel.weighty = 1.0;
+		this.gbcMessagesPanel.ipady = 15;
+		this.gbcMessagesPanel.anchor = GridBagConstraints.NORTH;
+
+		this.dgcNewMessage = new GridBagConstraints();
+		this.dgcNewMessage.weightx = 1.0;
+		this.dgcNewMessage.weighty = 1.0;		
+		this.dgcNewMessage.insets = new Insets(0,10,0, 10);
+
+		this.dgcNewMessageContents = new GridBagConstraints();
+		this.dgcNewMessageContents.fill = GridBagConstraints.HORIZONTAL;
+		this.dgcNewMessageContents.weightx = 1.0;
+		this.dgcNewMessageContents.weighty = 1.0;
+		this.dgcNewMessageContents.gridx = 0;
+		this.dgcNewMessageContents.gridy = 0;
+		this.dgcNewMessageContents.insets = new Insets(1,5,1, 5);
+
 		this.jpMessagesPanel.setBackground(Color.LIGHT_GRAY);
+
 		
 		this.jspMessagesPanel = new JScrollPane(this.jpMessagesPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 		this.jspMessagesPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
-		
+
 		this.jspMessagesPanel.setVisible(false);
 		this.jpCenterPanel.add(jspMessagesPanel);
 		
 		// Start Setting Control Panel
-		this.jpControlsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		this.jpControlsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+
+		if(btnFileIcon != null){
+			this.jbtFileButton = new JButton(btnFileIcon);
+			this.jbtFileButton.setPreferredSize(new Dimension(60, 60));
+		}
+		else
+			this.jbtFileButton = new JButton("Arquivo");
 		
-		this.jbtFileButton = new JButton("Arquivo");
+		this.jbtFileButton.setToolTipText("Arquivo");
 		this.jbtFileButton.setFont(Font.decode("Arial-PLAIN-12"));
 		this.jbtFileButton.addActionListener(new arquivoBtnClick(this));
 		
 		this.jpControlsPanel.add(jbtFileButton);
 		
 		this.jtaMessageBar = new JTextArea(3, 28);
+		this.jtaMessageBar.setToolTipText("Barra de mensagem");
 		this.jtaMessageBar.setFont(Font.decode("Arial-PLAIN-13"));
 		this.jtaMessageBar.setLineWrap(true);
 		this.jtaMessageBar.setWrapStyleWord(true);
-		
+		this.jtaMessageBar.addKeyListener(new messageBarKey(this));		
+
 		this.jpControlsPanel.add(new JScrollPane(this.jtaMessageBar, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER));
 		
-		jbAux = new JButton("Enviar");
-		jbAux.setFont(Font.decode("Arial-PLAIN-12"));
-		jbAux.addActionListener(new enviarBtnClick(this));
+		if(sendIcon != null){
+			this.jbtSendButton = new JButton(sendIcon);
+			this.jbtSendButton.setPreferredSize(new Dimension(60, 60));
+		}
+		else
+			this.jbtSendButton = new JButton("Enviar");
+
+		this.jbtSendButton.setToolTipText("Enviar");
+		this.jbtSendButton.setFont(Font.decode("Arial-PLAIN-12"));
+		this.jbtSendButton.addActionListener(new enviarBtnClick(this));
 		
-		this.jpControlsPanel.add(jbAux);
+		this.jpControlsPanel.add(jbtSendButton);
 		
 		this.jpControlsPanel.setVisible(false);
 		this.add(this.jpControlsPanel, BorderLayout.SOUTH);
@@ -210,47 +301,115 @@ class LightMessageUI extends JFrame{
 		System.exit(1);
 	}
 	
+	private String formatLabelContent(String contentToFormat, int wrapLenght){
+		StringBuilder formatedContent = new StringBuilder(""); 
+
+		if(contentToFormat.length() > wrapLenght){
+
+			String auxString = "";
+			int endIndex = 0;
+			int startIndex = 0;
+			for(int i = 0; i < (int)Math.ceil(contentToFormat.length() / wrapLenght); i++){
+				startIndex = endIndex;
+				endIndex = (i + 1) * wrapLenght;
+				endIndex = contentToFormat.indexOf(" ", endIndex) > -1?  contentToFormat.indexOf(" ", endIndex) + 1 : endIndex;
+
+				if(endIndex < contentToFormat.length()){
+					auxString = contentToFormat.substring(startIndex, endIndex);
+					auxString = contentToFormat.substring(startIndex, endIndex).replace("\n", "<br/>");
+					auxString = auxString.trim() + "<br/>";
+				}
+				else
+					auxString = contentToFormat.substring(startIndex, contentToFormat.length());
+
+				formatedContent.append(auxString);
+			}
+
+		}
+		else 
+			formatedContent.append(contentToFormat.replace("\n", "<br/>").trim());
+
+		return "<html><body>" + formatedContent.toString() + "</body></html>";
+	}
+
 	public void createNewMessage(String useName, LocalDateTime datetime, String content, MessageDirection direction, CommandV2.CommandTypeV2 contentType){
-		JPanel newMessage = new JPanel();
+		JPanel backgroundPanel = new JPanel();
 		
-		newMessage.setLayout(new BoxLayout(newMessage, BoxLayout.Y_AXIS));
-				
-		newMessage.setAlignmentX(direction == MessageDirection.SENDING? Component.RIGHT_ALIGNMENT : Component.LEFT_ALIGNMENT);
-		newMessage.setAlignmentY(Component.CENTER_ALIGNMENT);
+		backgroundPanel.setLayout(new GridBagLayout());
+		backgroundPanel.setBackground(Color.LIGHT_GRAY);
 		
-		newMessage.setBackground(Color.WHITE);
-		
+		this.dgcNewMessageContents.gridy = 0;
+
 		JLabel jlAux;
 		if(!useName.trim().isEmpty()){
 			jlAux = new JLabel(useName+":");
 			jlAux.setFont(Font.decode("Arial-BOLD-13"));
 			
-			jlAux.setAlignmentY(Component.CENTER_ALIGNMENT);
-			jlAux.setAlignmentX(Component.LEFT_ALIGNMENT);
-			
-			newMessage.add(jlAux);
+			jlAux.setHorizontalAlignment(SwingConstants.LEFT);
+
+			backgroundPanel.add(jlAux, this.dgcNewMessageContents);
+			this.dgcNewMessageContents.gridy += 1;
 		}
 		
+		JPanel contentPanel = new JPanel();
+		contentPanel.setLayout(new GridBagLayout());
+
+		contentPanel.setBackground(Color.WHITE);
+		contentPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+
+		GridBagConstraints gbcContenPanel = new GridBagConstraints();
+		gbcContenPanel.gridy = 0;
+		gbcContenPanel.weightx = 1.0;
+		gbcContenPanel.weighty = 1.0;
+		gbcContenPanel.insets = new Insets(15,15,15, 15);
+
 		String labelContent = content;
-		if(contentType == CommandV2.CommandTypeV2.FILE){
+		if(contentType == CommandV2.CommandTypeV2.FILE){			
 			File file = new File(content);
-			labelContent = (direction == MessageDirection.SENDING ? "Enviado" : "Recebido") + " - " + file.getName();
+
+			if(btnFileIcon != null){
+				JLabel lblfileIcon = new JLabel(btnFileIcon);
+
+				gbcContenPanel.insets.set(15, 15, 5, 15);
+
+				contentPanel.add(lblfileIcon, gbcContenPanel);
+				gbcContenPanel.gridy += 1;
+
+				gbcContenPanel.insets.set(5, 15, 15, 15);
+
+				labelContent = file.getName();	
+			}
+			else
+				labelContent = (direction == MessageDirection.SENDING ? "Enviado" : "Recebido") + " - " + file.getName();
 		}
-		
-		jlAux = new JLabel(labelContent);
+
+		jlAux = new JLabel(formatLabelContent(labelContent, 50));
 		jlAux.setFont(Font.decode("Arial-PLAIN-13"));
-		
-		newMessage.add(jlAux);
+
+		contentPanel.add(jlAux,gbcContenPanel);
+		gbcContenPanel.gridy += 1;
+
+		backgroundPanel.add(contentPanel,this.dgcNewMessageContents);
+		this.dgcNewMessageContents.gridy += 1;
 		
 		jlAux = new JLabel(datetime.format(DateTimeFormatter.ofPattern("HH:mm")));
 		jlAux.setFont(Font.decode("Arial-PLAIN-13"));
 		
-		jlAux.setAlignmentY(Component.CENTER_ALIGNMENT);
-		jlAux.setAlignmentX(Component.RIGHT_ALIGNMENT);
-		
-		newMessage.add(jlAux);
-		this.jpMessagesPanel.add(newMessage);
-		
+		jlAux.setHorizontalAlignment(SwingConstants.RIGHT);
+
+		backgroundPanel.add(jlAux,this.dgcNewMessageContents);
+
+		JPanel newMessage = new JPanel();
+		newMessage.setLayout(new GridBagLayout());
+
+		newMessage.setBackground(Color.LIGHT_GRAY);
+
+		this.dgcNewMessage.anchor = direction == MessageDirection.SENDING? GridBagConstraints.EAST : GridBagConstraints.WEST;
+		newMessage.add(backgroundPanel, this.dgcNewMessage);
+
+		this.jpMessagesPanel.add(newMessage, this.gbcMessagesPanel);
+		this.gbcMessagesPanel.gridy += 1;
+
 		this.jspMessagesPanel.updateUI();
 	}
 	
@@ -398,6 +557,56 @@ class LightMessageUI extends JFrame{
 				fileSelected = false;
 			}
 		}
+	}
+
+	private class messageBarKey implements KeyListener{
+		public LightMessageUI container;
+		
+		public messageBarKey(LightMessageUI container){
+			this.container = container;
+		}
+		
+		@Override
+		public void keyTyped(KeyEvent e){
+			if(((int)e.getKeyChar()) == KeyEvent.VK_ENTER && e.isShiftDown()){
+				container.jtaMessageBar.append("\n");
+				return;
+			}
+
+			if (((int)e.getKeyChar()) == KeyEvent.VK_ENTER && !e.isShiftDown()){
+				container.jbtSendButton.doClick();
+				return;
+			}
+		}
+
+		@Override
+		public void keyPressed(KeyEvent e){}
+
+		@Override
+		public void keyReleased(KeyEvent e){}
+			
+	}
+
+	private class userNameKey implements KeyListener{
+		public LightMessageUI container;
+		
+		public userNameKey(LightMessageUI container){
+			this.container = container;
+		}
+		
+		@Override
+		public void keyTyped(KeyEvent e){
+			if (((int)e.getKeyChar()) == KeyEvent.VK_ENTER && !e.isShiftDown()){
+				container.jbtLoginButton.doClick();
+				return;
+			}
+		}
+
+		@Override
+		public void keyPressed(KeyEvent e){}
+
+		@Override
+		public void keyReleased(KeyEvent e){}
 	}
 	
 }
